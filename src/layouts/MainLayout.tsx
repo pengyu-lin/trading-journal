@@ -5,6 +5,7 @@ import {
   MenuUnfoldOutlined,
   DashboardOutlined,
   BookOutlined,
+  BankOutlined,
 } from "@ant-design/icons";
 import { Button, Layout, Menu, theme } from "antd";
 
@@ -30,6 +31,11 @@ const MainLayout: React.FC<Props> = ({ children }) => {
       key: "/journal",
       icon: <BookOutlined />,
       label: "Journal",
+    },
+    {
+      key: "/accounts",
+      icon: <BankOutlined />,
+      label: "Accounts",
     },
   ];
 
