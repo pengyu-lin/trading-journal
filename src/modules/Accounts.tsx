@@ -1,12 +1,15 @@
-import React from "react";
-import { Button } from "antd";
+import { useState } from "react";
+import { Button, message } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import AddAccountForm from "../components/accounts/AddAccountForm";
 import AccountsTable from "../components/accounts/AccountsTable";
 import type { AccountFormData } from "../types/trade";
+import { createAccount } from "../services/accountsService";
 
 export default function Accounts() {
-  const [isModalVisible, setIsModalVisible] = React.useState(false);
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const showModal = () => {
     setIsModalVisible(true);
@@ -18,13 +21,23 @@ export default function Accounts() {
 
   const handleSubmit = async (values: AccountFormData) => {
     try {
+      setIsLoading(true);
       console.log("Account form values:", values);
-      // TODO: Add account to Firebase
-      // TODO: Add transactions to Firebase
+
+      // Create the account with transactions
+      const accountId = await createAccount(values);
+
+      message.success(`Account "${values.name}" created successfully!`);
       setIsModalVisible(false);
-      // TODO: Refresh accounts table
+
+      // Trigger table refresh by updating the refresh key
+      setRefreshKey((prev) => prev + 1);
+      console.log("New account created with ID:", accountId);
     } catch (error) {
       console.error("Error adding account:", error);
+      message.error("Failed to create account. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -41,12 +54,14 @@ export default function Accounts() {
         </Button>
       </div>
 
-      <AccountsTable />
+      <AccountsTable refreshKey={refreshKey} />
 
       <AddAccountForm
         visible={isModalVisible}
+        mode="add"
         onCancel={handleCancel}
         onSubmit={handleSubmit}
+        loading={isLoading}
       />
     </>
   );

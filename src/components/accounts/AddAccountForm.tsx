@@ -7,7 +7,6 @@ import {
   Space,
   Row,
   Col,
-  message,
   Checkbox,
   InputNumber,
   DatePicker,
@@ -15,28 +14,36 @@ import {
 import { PlusOutlined, MinusCircleOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import type { AccountFormData } from "../../types/trade";
+import { useEffect } from "react";
+import { isAccountNameTaken } from "../../services/accountsService";
 
 const { Option } = Select;
 
 interface AddAccountFormProps {
   visible: boolean;
+  mode: "add" | "edit";
+  initialData?: AccountFormData;
+  editingAccountId?: string; // Add this for edit mode
   onCancel: () => void;
   onSubmit: (values: AccountFormData) => void;
+  loading?: boolean;
 }
 
 export default function AddAccountForm({
   visible,
+  mode,
+  initialData,
+  editingAccountId,
   onCancel,
   onSubmit,
+  loading = false,
 }: AddAccountFormProps) {
   const [form] = Form.useForm<AccountFormData>();
 
   const handleSubmit = async (values: AccountFormData) => {
     try {
-      console.log("Form values:", values);
       await onSubmit(values);
       form.resetFields();
-      message.success("Account added successfully!");
     } catch {
       // Error handling is done in the parent component
     }
@@ -54,21 +61,80 @@ export default function AddAccountForm({
     console.log("Date changed:", date, dateString);
   };
 
+  // Set form values when editing
+  useEffect(() => {
+    if (visible && mode === "edit" && initialData) {
+      form.setFieldsValue({
+        name: initialData.name,
+        isActive: initialData.isActive,
+        isPrimary: initialData.isPrimary,
+        transactions: initialData.transactions,
+      });
+    } else if (visible && mode === "add") {
+      form.setFieldsValue({
+        name: "",
+        isActive: true,
+        isPrimary: false,
+        transactions: [
+          {
+            type: "deposit",
+            amount: undefined,
+            date: dayjs(),
+            description: "",
+          },
+        ],
+      });
+    }
+  }, [visible, mode, initialData, form]);
+
+  const getModalTitle = () => {
+    return mode === "add" ? "Add New Trading Account" : "Edit Trading Account";
+  };
+
+  const getSubmitButtonText = () => {
+    return mode === "add" ? "Add Account" : "Update Account";
+  };
+
+  // Custom validation for duplicate account names
+  const validateAccountName = async (_: unknown, value: string) => {
+    if (!value || value.trim().length === 0) {
+      return Promise.resolve();
+    }
+
+    try {
+      // For edit mode, exclude the current account being edited
+      const isTaken = await isAccountNameTaken(value.trim(), editingAccountId);
+
+      if (isTaken) {
+        return Promise.reject(
+          new Error(`Account name "${value.trim()}" already exists`)
+        );
+      }
+
+      return Promise.resolve();
+    } catch {
+      // If validation fails, don't block the form
+      return Promise.resolve();
+    }
+  };
+
   return (
     <>
       <style>
         {`
-          .ant-form-item-explain-error {
-            display: none !important;
-          }
-        `}
+            /* Hide error text messages for transaction amount fields only */
+            .ant-form-item:has(.ant-input-number) .ant-form-item-explain-error {
+              display: none !important;
+            }
+          `}
       </style>
       <Modal
-        title="Add New Trading Account"
+        title={getModalTitle()}
         open={visible}
         onCancel={handleCancel}
         footer={null}
-        width={800}>
+        width={800}
+        destroyOnHidden>
         <Form
           form={form}
           layout="vertical"
@@ -97,6 +163,10 @@ export default function AddAccountForm({
                     min: 2,
                     max: 50,
                     message: "Account name must be between 2 and 50 characters",
+                  },
+                  {
+                    validator: validateAccountName,
+                    validateTrigger: ["onBlur", "onChange"],
                   },
                 ]}>
                 <Input placeholder="e.g., Main Account" />
@@ -128,10 +198,13 @@ export default function AddAccountForm({
 
           {/* Account Transactions Section */}
           <div style={{ marginTop: 24, marginBottom: 16 }}>
-            <h4 style={{ marginBottom: 16 }}>Initial Account Transactions</h4>
+            <h4 style={{ marginBottom: 16 }}>
+              {mode === "add" ? "Initial" : "Account"} Transactions
+            </h4>
             <p style={{ color: "#666", marginBottom: 16 }}>
-              Add your initial deposits or withdrawals to set up the account
-              balance.
+              {mode === "add"
+                ? "Add your initial deposits or withdrawals to set up the account balance."
+                : "Manage deposits and withdrawals for this account."}
             </p>
           </div>
 
@@ -269,7 +342,7 @@ export default function AddAccountForm({
                     onClick={() =>
                       add({
                         type: "deposit",
-                        amount: null,
+                        amount: undefined,
                         date: dayjs(),
                         description: "",
                       })
@@ -286,9 +359,11 @@ export default function AddAccountForm({
           {/* Form buttons */}
           <Form.Item style={{ marginBottom: 0, textAlign: "right" }}>
             <Space>
-              <Button onClick={handleCancel}>Cancel</Button>
-              <Button type="primary" htmlType="submit">
-                Add Account
+              <Button onClick={handleCancel} disabled={loading}>
+                Cancel
+              </Button>
+              <Button type="primary" htmlType="submit" loading={loading}>
+                {getSubmitButtonText()}
               </Button>
             </Space>
           </Form.Item>

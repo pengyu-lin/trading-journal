@@ -68,13 +68,13 @@ export interface AccountFormData {
   name: string;
   isActive: boolean;
   isPrimary: boolean;
-  transactions: Omit<TransactionFormData, "accountId">[];
+  transactions: (Omit<TransactionFormData, "accountId"> & { id?: string })[];
 }
 
 // For form submission when adding account transactions
 export interface TransactionFormData {
   accountId: string;
-  type: "deposit" | "withdrawal" | "transfer_in" | "transfer_out";
+  type: "deposit" | "withdrawal";
   amount: number;
   date: Dayjs;
   description?: string;
