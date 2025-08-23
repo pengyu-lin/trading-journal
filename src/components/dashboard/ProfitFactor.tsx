@@ -1,16 +1,47 @@
-import { Card, Row, Col, Statistic } from "antd";
+import { Card, Row, Col, Statistic, Spin } from "antd";
 import { PieChart, Pie, Cell, Tooltip } from "recharts";
-
-const data = [
-  { name: "Profit", value: 70 },
-  { name: "Loss", value: 30 },
-];
+import {
+  useProfitFactor,
+  useDashboardLoading,
+  useDashboardTrades,
+} from "../../stores/dashboardStore";
 
 export default function ProfitFactor() {
-  // Calculate profit factor dynamically from data
-  const profitValue = data[0].value;
-  const lossValue = data[1].value;
-  const profitFactor = lossValue > 0 ? profitValue / lossValue : 0;
+  const profitFactor = useProfitFactor();
+  const isLoading = useDashboardLoading();
+  const trades = useDashboardTrades();
+
+  // Calculate actual win and loss amounts
+  const closedTrades = trades.filter((trade) => trade.status === "closed");
+  const totalProfits = closedTrades
+    .filter((trade) => (trade.totalReturn || 0) > 0)
+    .reduce((sum, trade) => sum + (trade.totalReturn || 0), 0);
+  const totalLosses = Math.abs(
+    closedTrades
+      .filter((trade) => (trade.totalReturn || 0) < 0)
+      .reduce((sum, trade) => sum + (trade.totalReturn || 0), 0)
+  );
+
+  // Calculate visual representation for the chart
+  // We'll show the ratio as a proportion where total = profit factor + 1
+  const total = profitFactor + 1;
+  const profitProportion = total > 0 ? (profitFactor / total) * 100 : 0;
+  const lossProportion = 100 - profitProportion;
+
+  const data = [
+    { name: "Profit", value: profitProportion, amount: totalProfits },
+    { name: "Loss", value: lossProportion, amount: totalLosses },
+  ];
+
+  if (isLoading) {
+    return (
+      <Card style={{ height: "120px" }}>
+        <div style={{ textAlign: "center", padding: "20px 0" }}>
+          <Spin size="small" />
+        </div>
+      </Card>
+    );
+  }
 
   return (
     <Card style={{ height: "120px" }}>
@@ -43,7 +74,14 @@ export default function ProfitFactor() {
                 />
               ))}
             </Pie>
-            <Tooltip />
+            <Tooltip
+              formatter={(_value: number, name: string) => {
+                const dataItem = data.find((item) => item.name === name);
+                const amount = dataItem?.amount || 0;
+                const sign = name === "Profit" ? "$" : "-$";
+                return [`${sign}${Math.abs(amount).toFixed(2)}`, name];
+              }}
+            />
           </PieChart>
         </Col>
       </Row>

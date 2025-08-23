@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Typography, Button, message } from "antd";
+import { PlusOutlined } from "@ant-design/icons";
 import JournalTable from "../components/journal/JournalTable";
 import AddTradeForm from "../components/journal/AddTradeForm";
 import {
@@ -112,10 +113,6 @@ export default function Journal() {
 
   return (
     <div>
-      <Title level={2} style={{ marginBottom: 24 }}>
-        Trading Journal
-      </Title>
-
       {/* Add Trade Button */}
       <div
         style={{
@@ -123,7 +120,7 @@ export default function Journal() {
           display: "flex",
           justifyContent: "flex-end",
         }}>
-        <Button type="primary" onClick={handleAddTrade}>
+        <Button type="primary" icon={<PlusOutlined />} onClick={handleAddTrade}>
           Add Trade
         </Button>
       </div>

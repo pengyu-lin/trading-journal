@@ -32,7 +32,11 @@ export async function createTrade(tradeData: TradeFormData): Promise<string> {
     }
 
     // Calculate trade statistics from actions
-    const tradeStats = calculateTradeStats(tradeData.actions);
+    const tradeStats = calculateTradeStats(
+      tradeData.actions,
+      tradeData.tickSize,
+      tradeData.tickValue
+    );
 
     // Create batch for atomic operation
     const batch = writeBatch(db);
@@ -125,7 +129,11 @@ export async function updateTrade(
       );
     }
 
-    const tradeStats = calculateTradeStats(tradeData.actions);
+    const tradeStats = calculateTradeStats(
+      tradeData.actions,
+      tradeData.tickSize,
+      tradeData.tickValue
+    );
 
     const batch = writeBatch(db);
 
@@ -155,7 +163,7 @@ export async function updateTrade(
       }
     }
 
-    batch.update(tradeRef, tradeDoc as any);
+    batch.update(tradeRef, tradeDoc);
 
     // 2. Delete existing trade actions
     const existingActionsQuery = query(
@@ -236,7 +244,11 @@ export async function deleteTrade(tradeId: string): Promise<void> {
 }
 
 // Helper function to calculate trade statistics from actions
-function calculateTradeStats(actions: TradeFormData["actions"]) {
+function calculateTradeStats(
+  actions: TradeFormData["actions"],
+  tickSize: number,
+  tickValue: number
+) {
   let totalBuyQty = 0;
   let totalSellQty = 0;
   let totalBuyValue = 0;
@@ -265,14 +277,19 @@ function calculateTradeStats(actions: TradeFormData["actions"]) {
   const avgEntryPrice = totalBuyQty > 0 ? totalBuyValue / totalBuyQty : 0;
   const avgExitPrice = totalSellQty > 0 ? totalSellValue / totalSellQty : 0;
 
-  // Calculate returns (only for closed trades)
+  // Calculate returns (only for closed trades) using tick size and value
   let totalReturn = undefined;
 
   if (!isOpen && totalBuyQty > 0 && totalSellQty > 0) {
     // Closed trade - calculate realized P&L
-    const totalCost = totalBuyValue + totalFees;
-    const totalProceeds = totalSellValue;
-    totalReturn = totalProceeds - totalCost;
+    // Convert price differences to tick movements and then to dollar value
+    const priceDifference = avgExitPrice - avgEntryPrice;
+    const tickMovement = priceDifference / tickSize;
+    const dollarPnLPerContract = tickMovement * tickValue;
+
+    // Multiply by quantity and subtract fees for net return
+    totalReturn =
+      Math.round((dollarPnLPerContract * totalBuyQty - totalFees) * 100) / 100;
   }
 
   const stats = {

@@ -153,7 +153,6 @@ export default function AccountsTable({ refreshKey }: AccountsTableProps) {
       title: "Account Name",
       dataIndex: "name",
       key: "name",
-      render: (text: string) => <strong>{text}</strong>,
     },
     {
       title: "Status",

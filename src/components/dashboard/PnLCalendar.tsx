@@ -1,7 +1,13 @@
-import { Card } from "antd";
+import React from "react";
+import { Card, Spin, Button, Space } from "antd";
+import { LeftOutlined, RightOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import weekday from "dayjs/plugin/weekday";
 import isToday from "dayjs/plugin/isToday";
+import {
+  useDailyStats,
+  useDashboardLoading,
+} from "../../stores/dashboardStore";
 
 dayjs.extend(weekday);
 dayjs.extend(isToday);
@@ -13,48 +19,57 @@ type DailyStats = {
 };
 
 export default function PnLCalendar() {
-  const currentDate = dayjs();
-  const year = currentDate.year();
-  const month = currentDate.month();
+  const dailyStats = useDailyStats();
+  const isLoading = useDashboardLoading();
+  const [selectedDate, setSelectedDate] = React.useState(dayjs());
 
-  const data: DailyStats[] = [
-    {
-      date: currentDate.subtract(7, "day").format("YYYY-MM-DD"),
-      pnl: 120,
-      trades: 3,
-    },
-    {
-      date: currentDate.subtract(6, "day").format("YYYY-MM-DD"),
-      pnl: -80,
-      trades: 2,
-    },
-    {
-      date: currentDate.subtract(5, "day").format("YYYY-MM-DD"),
-      pnl: 0,
-      trades: 1,
-    },
-    {
-      date: currentDate.subtract(4, "day").format("YYYY-MM-DD"),
-      pnl: 200,
-      trades: 5,
-    },
-    {
-      date: currentDate.subtract(3, "day").format("YYYY-MM-DD"),
-      pnl: -40,
-      trades: 1,
-    },
-    {
-      date: currentDate.subtract(2, "day").format("YYYY-MM-DD"),
-      pnl: 300,
-      trades: 6,
-    },
-    {
-      date: currentDate.subtract(1, "day").format("YYYY-MM-DD"),
-      pnl: 150,
-      trades: 4,
-    },
-    { date: currentDate.format("YYYY-MM-DD"), pnl: 180, trades: 3 },
-  ];
+  const year = selectedDate.year();
+  const month = selectedDate.month();
+
+  // Navigation functions
+  const goToPreviousMonth = () => {
+    setSelectedDate(selectedDate.subtract(1, "month"));
+  };
+
+  const goToNextMonth = () => {
+    setSelectedDate(selectedDate.add(1, "month"));
+  };
+
+  const goToCurrentMonth = () => {
+    setSelectedDate(dayjs());
+  };
+
+  // Extract the title into a reusable function
+  const renderCalendarTitle = () => (
+    <Space>
+      <Button
+        icon={<LeftOutlined />}
+        onClick={goToPreviousMonth}
+        size="small"
+      />
+      <span
+        style={{
+          minWidth: "250px",
+          textAlign: "center",
+          display: "inline-block",
+        }}>
+        {selectedDate.format("MMMM YYYY")} PnL Calendar
+      </span>
+      <Button icon={<RightOutlined />} onClick={goToNextMonth} size="small" />
+      <Button onClick={goToCurrentMonth} size="small">
+        Today
+      </Button>
+    </Space>
+  );
+
+  // Convert daily stats data to DailyStats format
+  const data: DailyStats[] = Object.entries(dailyStats).map(
+    ([date, stats]) => ({
+      date,
+      pnl: stats.pnl,
+      trades: stats.trades,
+    })
+  );
 
   const statsMap = new Map(data.map((d) => [d.date, d]));
 
@@ -62,8 +77,18 @@ export default function PnLCalendar() {
   const startDate = startOfMonth.weekday(0);
   const days = Array.from({ length: 42 }, (_, i) => startDate.add(i, "day"));
 
+  if (isLoading) {
+    return (
+      <Card title={renderCalendarTitle()}>
+        <div style={{ textAlign: "center", padding: "40px 0" }}>
+          <Spin size="large" />
+        </div>
+      </Card>
+    );
+  }
+
   return (
-    <Card title={`${dayjs().format("MMMM YYYY")} PnL Calendar`}>
+    <Card title={renderCalendarTitle()}>
       <div className="calendar-grid">
         {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
           <div key={d} className="calendar-header">
