@@ -6,8 +6,11 @@ import {
   DashboardOutlined,
   BookOutlined,
   BankOutlined,
+  LogoutOutlined,
 } from "@ant-design/icons";
-import { Button, Layout, Menu, theme } from "antd";
+import { Button, Layout, Menu, theme, Space, Typography } from "antd";
+import { useAuthStore } from "../stores/authStore";
+import { signOutUser } from "../services/authService";
 
 const { Header, Sider, Content } = Layout;
 
@@ -20,6 +23,16 @@ const MainLayout: React.FC<Props> = ({ children }) => {
   const { token } = theme.useToken();
   const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useAuthStore();
+
+  const handleLogout = async () => {
+    try {
+      await signOutUser();
+      navigate("/auth");
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  };
 
   const menuItems = [
     {
@@ -52,13 +65,31 @@ const MainLayout: React.FC<Props> = ({ children }) => {
         />
       </Sider>
       <Layout>
-        <Header style={{ padding: 0, background: token.colorBgContainer }}>
+        <Header
+          style={{
+            padding: "0 16px",
+            background: token.colorBgContainer,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}>
           <Button
             type="text"
             icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
             onClick={() => setCollapsed(!collapsed)}
             style={{ fontSize: "16px", width: 64, height: 64 }}
           />
+
+          <Space>
+            <Typography.Text strong>{user?.email}</Typography.Text>
+            <Button
+              type="text"
+              icon={<LogoutOutlined />}
+              onClick={handleLogout}
+              style={{ color: "#ff4d4f" }}>
+              Logout
+            </Button>
+          </Space>
         </Header>
         <Content
           style={{
