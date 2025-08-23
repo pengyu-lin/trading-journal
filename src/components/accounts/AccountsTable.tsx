@@ -1,11 +1,7 @@
 import { useEffect, useState } from "react";
-import { Table, Tag, Space, Button, Spin, message, Modal } from "antd";
-import {
-  EditOutlined,
-  DeleteOutlined,
-  StarFilled,
-  ExclamationCircleOutlined,
-} from "@ant-design/icons";
+import { Table, Tag, Space, Button, Spin, message } from "antd";
+import { EditOutlined, DeleteOutlined, StarFilled } from "@ant-design/icons";
+import DeleteConfirmationModal from "../common/DeleteConfirmationModal";
 import type { TradingAccount, AccountTransaction } from "../../types/trade";
 import {
   getAccounts,
@@ -36,6 +32,10 @@ export default function AccountsTable({ refreshKey }: AccountsTableProps) {
     AccountTransaction[]
   >([]);
   const [editLoading, setEditLoading] = useState(false);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [selectedAccount, setSelectedAccount] = useState<TradingAccount | null>(
+    null
+  );
 
   const fetchAccounts = async () => {
     try {
@@ -51,38 +51,31 @@ export default function AccountsTable({ refreshKey }: AccountsTableProps) {
   };
 
   const handleDelete = async (account: TradingAccount) => {
-    Modal.confirm({
-      title: "Permanently Delete Account",
-      icon: <ExclamationCircleOutlined />,
-      content: (
-        <div>
-          <p>
-            Are you sure you want to <strong>permanently delete</strong> the
-            account <strong>"{account.name}"</strong>?
-          </p>
-          <p style={{ color: "#ff4d4f", fontSize: "12px", marginTop: "8px" }}>
-            ⚠️ This action cannot be undone. The account and all its data will
-            be permanently removed from the database.
-          </p>
-        </div>
-      ),
-      okText: "Delete Permanently",
-      okType: "danger",
-      cancelText: "Cancel",
-      onOk: async () => {
-        try {
-          setDeletingAccountId(account.id!);
-          await deleteAccount(account.id!);
-          message.success(`Account "${account.name}" permanently deleted`);
-          await fetchAccounts();
-        } catch (error) {
-          console.error("Error deleting account:", error);
-          message.error("Failed to delete account. Please try again.");
-        } finally {
-          setDeletingAccountId(null);
-        }
-      },
-    });
+    setSelectedAccount(account);
+    setDeleteModalVisible(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (selectedAccount) {
+      try {
+        setDeletingAccountId(selectedAccount.id!);
+        await deleteAccount(selectedAccount.id!);
+        message.success("Account deleted successfully!");
+        await fetchAccounts();
+        setDeleteModalVisible(false);
+        setSelectedAccount(null);
+      } catch (error) {
+        console.error("Error deleting account:", error);
+        message.error("Failed to delete account. Please try again.");
+      } finally {
+        setDeletingAccountId(null);
+      }
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteModalVisible(false);
+    setSelectedAccount(null);
   };
 
   const handleEdit = async (account: TradingAccount) => {
@@ -124,7 +117,7 @@ export default function AccountsTable({ refreshKey }: AccountsTableProps) {
           description: t.description || "",
         }))
       );
-      message.success(`Account "${values.name}" updated successfully`);
+      message.success("Account updated successfully");
       setEditModalVisible(false);
       await fetchAccounts();
     } catch (error) {
@@ -249,6 +242,15 @@ export default function AccountsTable({ refreshKey }: AccountsTableProps) {
         onCancel={handleEditCancel}
         onSubmit={handleEditSubmit}
         loading={editLoading}
+      />
+
+      <DeleteConfirmationModal
+        visible={deleteModalVisible}
+        entityName="Account"
+        entityIdentifier={selectedAccount?.name || ""}
+        onConfirm={handleDeleteConfirm}
+        onCancel={handleDeleteCancel}
+        loading={deletingAccountId !== null}
       />
     </>
   );

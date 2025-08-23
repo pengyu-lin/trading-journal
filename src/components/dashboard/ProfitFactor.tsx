@@ -2,8 +2,8 @@ import { Card, Row, Col, Statistic } from "antd";
 import { PieChart, Pie, Cell, Tooltip } from "recharts";
 
 const data = [
-  { name: "Profit", value: 20 },
-  { name: "Loss", value: 80 },
+  { name: "Profit", value: 70 },
+  { name: "Loss", value: 30 },
 ];
 
 export default function ProfitFactor() {

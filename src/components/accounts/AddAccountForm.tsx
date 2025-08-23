@@ -58,7 +58,7 @@ export default function AddAccountForm({
     date: dayjs.Dayjs | null,
     dateString: string | string[]
   ) => {
-    console.log("Date changed:", date, dateString);
+    // Date change handler
   };
 
   // Set form values when editing

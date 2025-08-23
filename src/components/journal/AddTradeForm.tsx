@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Modal,
   Form,
@@ -21,31 +21,119 @@ import {
   DeleteOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
+import type { TradingAccount, Trade, TradeAction } from "../../types/trade";
+import { getPrimaryAccount } from "../../services/accountsService";
+import { createTrade, updateTrade } from "../../services/tradesService";
 
 const { Option } = Select;
 
 interface AddTradeFormProps {
   visible: boolean;
   onCancel: () => void;
-  onSubmit: (values: any) => void;
+  onSubmit: (values: Record<string, unknown>) => Promise<void>;
+  mode: "create" | "edit";
+  editData?: {
+    trade: Trade;
+    actions: TradeAction[];
+  };
 }
 
 export default function AddTradeForm({
   visible,
   onCancel,
   onSubmit,
+  mode,
+  editData,
 }: AddTradeFormProps) {
   const [form] = Form.useForm();
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [primaryAccount, setPrimaryAccount] = useState<TradingAccount | null>(
+    null
+  );
 
-  const handleSubmit = async (values: any) => {
+  // Load primary account when component mounts
+  useEffect(() => {
+    const loadPrimaryAccount = async () => {
+      try {
+        const account = await getPrimaryAccount();
+        setPrimaryAccount(account);
+      } catch (error) {
+        console.error("Failed to load primary account:", error);
+        message.error("Failed to load primary account");
+      }
+    };
+
+    if (visible) {
+      loadPrimaryAccount();
+
+      // If editing, populate form with existing data
+      if (mode === "edit" && editData) {
+        const { trade, actions } = editData;
+
+        // Convert actions to form format
+        const formActions = actions.map((action) => ({
+          action: action.action,
+          date: dayjs(action.date.toDate()),
+          qty: action.qty,
+          price: action.price,
+          fee: action.fee,
+        }));
+
+        form.setFieldsValue({
+          accountId: trade.accountId,
+          symbol: trade.symbol,
+          tickSize: trade.tickSize,
+          tickValue: trade.tickValue,
+          actions: formActions,
+          note: trade.note || "",
+          screenshots: trade.screenshots || [],
+        });
+      } else {
+        // Reset form for create mode
+        form.resetFields();
+        setUploadedImages([]);
+      }
+    }
+  }, [visible, mode, editData, form]);
+
+  const handleSubmit = async (values: Record<string, unknown>) => {
     try {
-      console.log("Form values:", values);
-      await onSubmit(values);
+      setLoading(true);
+
+      // Set the primary account ID if not already set
+      if (!values.accountId && primaryAccount) {
+        values.accountId = primaryAccount.id;
+      }
+
+      // Ensure screenshots field is properly set
+      if (!values.screenshots) {
+        values.screenshots = [];
+      }
+
+      if (mode === "edit" && editData) {
+        // Update existing trade
+        await updateTrade(editData.trade.id!, values as any);
+        // Success message handled by parent component
+      } else {
+        // Create new trade
+        const tradeId = await createTrade(values as any);
+        // Success message handled by parent component
+      }
+
+      // Reset form and close modal
       form.resetFields();
-      message.success("Trade added successfully!");
-    } catch {
-      // Error handling
+      setUploadedImages([]);
+
+      // Call the onSubmit callback to close the modal
+      await onSubmit(values);
+    } catch (error) {
+      console.error("Error submitting trade:", error);
+      const action = mode === "edit" ? "updating" : "adding";
+      message.error(`Failed to ${action} trade. Please try again.`);
+      throw error; // Re-throw to let the form handle the error
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -58,7 +146,7 @@ export default function AddTradeForm({
     date: dayjs.Dayjs | null,
     dateString: string | string[]
   ) => {
-    console.log("Date changed:", date, dateString);
+    // Date change handler
   };
 
   const handleImageUpload = (file: File) => {
@@ -88,7 +176,7 @@ export default function AddTradeForm({
         `}
       </style>
       <Modal
-        title="Add New Trade"
+        title={mode === "edit" ? "Edit Trade" : "Add New Trade"}
         open={visible}
         onCancel={handleCancel}
         footer={null}
@@ -108,7 +196,20 @@ export default function AddTradeForm({
                 fee: null,
               },
             ],
+            screenshots: [], // Initialize screenshots as empty array
           }}>
+          {/* Account Selection */}
+          <Form.Item
+            name="accountId"
+            label="Trading Account"
+            rules={[{ required: true, message: "Please select an account" }]}>
+            <Select placeholder="Select account" disabled={!primaryAccount}>
+              {primaryAccount && (
+                <Option value={primaryAccount.id}>{primaryAccount.name}</Option>
+              )}
+            </Select>
+          </Form.Item>
+
           {/* First row: Symbol, Tick Size, Tick Value */}
           <Row gutter={16}>
             <Col span={8}>
@@ -420,9 +521,17 @@ export default function AddTradeForm({
           {/* Form buttons */}
           <Form.Item style={{ marginBottom: 0, textAlign: "right" }}>
             <Space>
-              <Button onClick={handleCancel}>Cancel</Button>
-              <Button type="primary" htmlType="submit">
-                Add Trade
+              <Button onClick={handleCancel} disabled={loading}>
+                Cancel
+              </Button>
+              <Button type="primary" htmlType="submit" loading={loading}>
+                {loading
+                  ? mode === "edit"
+                    ? "Updating Trade..."
+                    : "Adding Trade..."
+                  : mode === "edit"
+                  ? "Update Trade"
+                  : "Add Trade"}
               </Button>
             </Space>
           </Form.Item>

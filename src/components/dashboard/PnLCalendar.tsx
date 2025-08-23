@@ -13,16 +13,47 @@ type DailyStats = {
 };
 
 export default function PnLCalendar() {
-  const year = 2025;
-  const month = 8;
+  const currentDate = dayjs();
+  const year = currentDate.year();
+  const month = currentDate.month();
 
   const data: DailyStats[] = [
-    { date: "2025-08-01", pnl: 120, trades: 3 },
-    { date: "2025-08-02", pnl: -80, trades: 2 },
-    { date: "2025-08-10", pnl: 0, trades: 1 },
-    { date: "2025-08-15", pnl: 200, trades: 5 },
-    { date: "2025-08-22", pnl: -40, trades: 1 },
-    { date: "2025-08-28", pnl: 300, trades: 6 },
+    {
+      date: currentDate.subtract(7, "day").format("YYYY-MM-DD"),
+      pnl: 120,
+      trades: 3,
+    },
+    {
+      date: currentDate.subtract(6, "day").format("YYYY-MM-DD"),
+      pnl: -80,
+      trades: 2,
+    },
+    {
+      date: currentDate.subtract(5, "day").format("YYYY-MM-DD"),
+      pnl: 0,
+      trades: 1,
+    },
+    {
+      date: currentDate.subtract(4, "day").format("YYYY-MM-DD"),
+      pnl: 200,
+      trades: 5,
+    },
+    {
+      date: currentDate.subtract(3, "day").format("YYYY-MM-DD"),
+      pnl: -40,
+      trades: 1,
+    },
+    {
+      date: currentDate.subtract(2, "day").format("YYYY-MM-DD"),
+      pnl: 300,
+      trades: 6,
+    },
+    {
+      date: currentDate.subtract(1, "day").format("YYYY-MM-DD"),
+      pnl: 150,
+      trades: 4,
+    },
+    { date: currentDate.format("YYYY-MM-DD"), pnl: 180, trades: 3 },
   ];
 
   const statsMap = new Map(data.map((d) => [d.date, d]));
@@ -32,7 +63,7 @@ export default function PnLCalendar() {
   const days = Array.from({ length: 42 }, (_, i) => startDate.add(i, "day"));
 
   return (
-    <Card title="August 2025 PnL Calendar">
+    <Card title={`${dayjs().format("MMMM YYYY")} PnL Calendar`}>
       <div className="calendar-grid">
         {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
           <div key={d} className="calendar-header">
@@ -42,13 +73,13 @@ export default function PnLCalendar() {
         {days.map((date) => {
           const dateStr = date.format("YYYY-MM-DD");
           const stats = statsMap.get(dateStr);
-          const pnl = stats?.pnl;
-          const trades = stats?.trades;
+          const pnl = stats?.pnl ?? 0;
+          const trades = stats?.trades ?? 0;
           const isCurrentMonth = date.month() === month;
           const isTodayDate = date.isToday();
 
           const color =
-            pnl === undefined
+            pnl === 0 && trades === 0
               ? "#f0f0f0" // no trade
               : pnl > 0
               ? "#d9f7be" // green for profit
@@ -62,7 +93,7 @@ export default function PnLCalendar() {
               }`}
               style={{ background: color }}>
               <div className="date-number">{date.date()}</div>
-              {stats && (
+              {stats && trades > 0 && (
                 <div className="calendar-info">
                   <div className="pnl-text">
                     {pnl >= 0 ? "+" : ""}

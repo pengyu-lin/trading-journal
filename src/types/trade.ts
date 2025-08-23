@@ -54,6 +54,9 @@ export interface Trade {
   status: "open" | "closed";
   note?: string;
   screenshots?: string[];
+  avgEntryPrice: number;
+  avgExitPrice?: number;
+  totalReturn?: number;
   createdAt: Timestamp;
   updatedAt: Timestamp;
   deletedAt?: Timestamp;
@@ -106,13 +109,7 @@ export interface TradeWithCalculations extends Trade {
   actions: TradeAction[]; // Include the actual actions
   totalFees: number;
   totalQty: number;
-  avgEntryPrice: number;
-  avgExitPrice?: number;
-  realizedPnL?: number;
-  unrealizedPnL?: number;
   isLong: boolean; // true if net long position
-  totalCost: number; // Total amount invested
-  marketValue?: number; // Current market value if open
 }
 
 // Account with summary statistics and cash flow

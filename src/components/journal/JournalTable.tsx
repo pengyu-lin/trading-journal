@@ -1,201 +1,152 @@
 import { useState } from "react";
-import { Table, Tag, Button, Modal, Typography } from "antd";
-import { InfoCircleOutlined, PlusOutlined } from "@ant-design/icons";
-import AddTradeForm from "./AddTradeForm";
+import { Table, Tag, Button, Typography, message, Space } from "antd";
+import { DeleteOutlined, InfoCircleOutlined } from "@ant-design/icons";
+import type { Trade } from "../../types/trade";
+import type { Key } from "react";
+import DeleteConfirmationModal from "../common/DeleteConfirmationModal";
 
 const { Text } = Typography;
 
-const rawData = [
-  {
-    key: "1",
-    date: "2025-08-10",
-    symbol: "AAPL",
-    status: "win",
-    side: "buy",
-    qty: 100,
-    entry: 150,
-    exit: 160,
-    return: 1000,
-    returnPercent: 6.67,
-    note: "Nice breakout from support.",
-  },
-  {
-    key: "2",
-    date: "2025-06-02",
-    symbol: "TSLA",
-    status: "loss",
-    side: "sell",
-    qty: 50,
-    entry: 250,
-    exit: 260,
-    return: -500,
-    returnPercent: -4,
-    note: "Didn't follow stop loss.",
-  },
-];
+interface JournalTableProps {
+  trades: Trade[];
+  loading: boolean;
+  onTradeAdded: () => Promise<void>;
+  onEditTrade: (trade: Trade) => void;
+  onDeleteTrade: (trade: Trade) => Promise<void>;
+}
 
-export default function JournalTable() {
-  const [modalData, setModalData] = useState<any>(null);
-  const [addTradeModalVisible, setAddTradeModalVisible] = useState(false);
+export default function JournalTable({
+  trades,
+  loading,
+  onEditTrade,
+  onDeleteTrade,
+}: JournalTableProps) {
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [selectedTrade, setSelectedTrade] = useState<Trade | null>(null);
 
-  const handleNoteClick = (record: any) => {
-    setModalData(record);
+  const handleEditClick = (record: Trade) => {
+    onEditTrade(record);
   };
 
-  const handleModalClose = () => {
-    setModalData(null);
+  const handleDeleteClick = (record: Trade) => {
+    setSelectedTrade(record);
+    setDeleteModalVisible(true);
   };
 
-  const handleAddTrade = () => {
-    setAddTradeModalVisible(true);
-  };
-
-  const handleAddTradeCancel = () => {
-    setAddTradeModalVisible(false);
-  };
-
-  const handleAddTradeSubmit = async (values: any) => {
-    try {
-      console.log("New trade data:", values);
-
-      // TODO: Add the trade to your data source
-      // rawData.push(formattedValues);
-
-      setAddTradeModalVisible(false);
-    } catch {
-      // Error handling is done in the AddTradeForm component
+  const handleDeleteConfirm = async () => {
+    if (selectedTrade) {
+      try {
+        await onDeleteTrade(selectedTrade);
+        setDeleteModalVisible(false);
+        setSelectedTrade(null);
+      } catch (error) {
+        console.error("Error deleting trade:", error);
+        message.error("Failed to delete trade. Please try again.");
+      }
     }
   };
 
+  const handleDeleteCancel = () => {
+    setDeleteModalVisible(false);
+    setSelectedTrade(null);
+  };
+
   const columns = [
-    { title: "Date", dataIndex: "date", key: "date" },
+    {
+      title: "Date",
+      dataIndex: "createdAt",
+      key: "createdAt",
+      render: (timestamp: unknown) => {
+        if (!timestamp) return "N/A";
+        const date = (timestamp as any).toDate
+          ? (timestamp as any).toDate()
+          : new Date(timestamp as any);
+        return date.toLocaleDateString();
+      },
+    },
     { title: "Symbol", dataIndex: "symbol", key: "symbol" },
     {
       title: "Status",
       dataIndex: "status",
       key: "status",
       filters: [
-        { text: "Win", value: "win" },
-        { text: "Loss", value: "loss" },
         { text: "Open", value: "open" },
+        { text: "Closed", value: "closed" },
       ],
-      onFilter: (value, record) => record.status === value,
+      onFilter: (value: boolean | Key, record: Trade) =>
+        record.status === value,
       render: (status: string) => {
-        const color =
-          status === "win" ? "green" : status === "loss" ? "red" : "blue";
+        const color = status === "closed" ? "green" : "blue";
         return <Tag color={color}>{status.toUpperCase()}</Tag>;
       },
     },
     {
-      title: "Side",
-      dataIndex: "side",
-      key: "side",
-      filters: [
-        { text: "Buy", value: "buy" },
-        { text: "Sell", value: "sell" },
-      ],
-      onFilter: (value, record) => record.side === value,
-      render: (side: string) => (
-        <Tag color={side === "buy" ? "green" : "volcano"}>
-          {side === "buy" ? "BUY" : "SELL"}
-        </Tag>
-      ),
-    },
-    { title: "Qty", dataIndex: "qty", key: "qty" },
-    { title: "Entry", dataIndex: "entry", key: "entry" },
-    { title: "Exit", dataIndex: "exit", key: "exit" },
-    {
-      title: "Return",
-      dataIndex: "return",
-      key: "return",
-      render: (value: number) => (
-        <Text style={{ color: value >= 0 ? "green" : "red" }}>
-          {value >= 0 ? "+" : ""}
-          {value}
-        </Text>
-      ),
+      title: "Entry Price",
+      dataIndex: "avgEntryPrice",
+      key: "avgEntryPrice",
+      render: (value: number) => `$${value?.toFixed(2) || "N/A"}`,
     },
     {
-      title: "Return %",
-      dataIndex: "returnPercent",
-      key: "returnPercent",
-      render: (value: number) => (
-        <Text style={{ color: value >= 0 ? "green" : "red" }}>
-          {value >= 0 ? "+" : ""}
-          {value}%
-        </Text>
-      ),
+      title: "Exit Price",
+      dataIndex: "avgExitPrice",
+      key: "avgExitPrice",
+      render: (value: number) => (value ? `$${value.toFixed(2)}` : "N/A"),
     },
     {
-      title: "Details",
-      key: "details",
-      render: (_, record) => (
-        <Button
-          type="link"
-          icon={<InfoCircleOutlined />}
-          onClick={() => handleNoteClick(record)}
-        />
+      title: "PnL",
+      dataIndex: "totalReturn",
+      key: "totalReturn",
+      render: (value: number) => {
+        if (value === undefined || value === null) return "N/A";
+        return (
+          <Text style={{ color: value >= 0 ? "green" : "red" }}>
+            {value >= 0 ? "+" : ""}${value.toFixed(2)}
+          </Text>
+        );
+      },
+    },
+    {
+      title: "Actions",
+      key: "actions",
+      render: (_: unknown, record: Trade) => (
+        <Space size="small">
+          <Button
+            type="text"
+            icon={<InfoCircleOutlined />}
+            size="small"
+            onClick={() => handleEditClick(record)}>
+            Details
+          </Button>
+          <Button
+            type="text"
+            icon={<DeleteOutlined />}
+            size="small"
+            danger
+            onClick={() => handleDeleteClick(record)}>
+            Delete
+          </Button>
+        </Space>
       ),
     },
   ];
 
   return (
     <>
-      <div
-        style={{
-          marginBottom: 16,
-          display: "flex",
-          justifyContent: "flex-end",
-        }}>
-        <Button type="primary" icon={<PlusOutlined />} onClick={handleAddTrade}>
-          Add Trade
-        </Button>
-      </div>
       <Table
-        dataSource={rawData}
+        dataSource={trades}
         columns={columns}
         pagination={{ pageSize: 10 }}
-        rowKey="key"
+        rowKey="id"
+        loading={loading}
       />
 
-      {/* Add Trade Form Modal */}
-      <AddTradeForm
-        visible={addTradeModalVisible}
-        onCancel={handleAddTradeCancel}
-        onSubmit={handleAddTradeSubmit}
+      <DeleteConfirmationModal
+        visible={deleteModalVisible}
+        entityName="Trade"
+        entityIdentifier={selectedTrade?.symbol || ""}
+        onConfirm={handleDeleteConfirm}
+        onCancel={handleDeleteCancel}
       />
-
-      {/* Existing Details Modal */}
-      <Modal
-        title={`Details for ${modalData?.symbol} on ${modalData?.date}`}
-        open={!!modalData}
-        onCancel={handleModalClose}
-        footer={null}>
-        <p>
-          <strong>Status:</strong> {modalData?.status}
-        </p>
-        <p>
-          <strong>Side:</strong> {modalData?.side}
-        </p>
-        <p>
-          <strong>Qty:</strong> {modalData?.qty}
-        </p>
-        <p>
-          <strong>Entry:</strong> {modalData?.entry}
-        </p>
-        <p>
-          <strong>Exit:</strong> {modalData?.exit}
-        </p>
-        <p>
-          <strong>Return:</strong> {modalData?.return}
-        </p>
-        <p>
-          <strong>Return %:</strong> {modalData?.returnPercent}%
-        </p>
-        <p>
-          <strong>Note:</strong> {modalData?.note}
-        </p>
-      </Modal>
     </>
   );
 }

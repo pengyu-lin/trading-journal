@@ -402,6 +402,39 @@ export async function isAccountNameTaken(
 }
 
 /**
+ * Get the primary trading account
+ */
+export async function getPrimaryAccount(): Promise<TradingAccount | null> {
+  try {
+    const primaryAccountQuery = query(
+      collection(db, ACCOUNTS_COLLECTION),
+      where("isPrimary", "==", true),
+      where("isActive", "==", true)
+    );
+
+    const primaryAccountSnapshot = await getDocs(primaryAccountQuery);
+
+    if (primaryAccountSnapshot.empty) {
+      return null;
+    }
+
+    if (primaryAccountSnapshot.docs.length > 1) {
+      // Multiple primary accounts found, using the first one
+    }
+
+    const primaryAccount = {
+      id: primaryAccountSnapshot.docs[0].id,
+      ...primaryAccountSnapshot.docs[0].data(),
+    } as TradingAccount;
+
+    return primaryAccount;
+  } catch (error) {
+    console.error("❌ Error getting primary account:", error);
+    throw new Error("Failed to get primary account");
+  }
+}
+
+/**
  * Get account with transactions (combined data)
  */
 export async function getAccountWithTransactions(accountId: string): Promise<{

@@ -22,7 +22,6 @@ export default function Accounts() {
   const handleSubmit = async (values: AccountFormData) => {
     try {
       setIsLoading(true);
-      console.log("Account form values:", values);
 
       // Create the account with transactions
       const accountId = await createAccount(values);
@@ -32,7 +31,6 @@ export default function Accounts() {
 
       // Trigger table refresh by updating the refresh key
       setRefreshKey((prev) => prev + 1);
-      console.log("New account created with ID:", accountId);
     } catch (error) {
       console.error("Error adding account:", error);
       message.error("Failed to create account. Please try again.");
