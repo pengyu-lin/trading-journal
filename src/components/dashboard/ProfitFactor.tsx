@@ -4,12 +4,26 @@ import {
   useProfitFactor,
   useDashboardLoading,
   useDashboardTrades,
+  useDashboardActions,
 } from "../../stores/dashboardStore";
+import { useSelectedAccount } from "../../stores/accountSelectorStore";
+import { useAuthStore } from "../../stores/authStore";
+import { useEffect } from "react";
 
 export default function ProfitFactor() {
   const profitFactor = useProfitFactor();
   const isLoading = useDashboardLoading();
   const trades = useDashboardTrades();
+  const { fetchTrades } = useDashboardActions();
+  const selectedAccount = useSelectedAccount();
+  const { user } = useAuthStore();
+
+  // Fetch trades when selected account changes
+  useEffect(() => {
+    if (selectedAccount?.id && user?.uid) {
+      fetchTrades(selectedAccount.id, user.uid);
+    }
+  }, [selectedAccount?.id, user?.uid, fetchTrades]);
 
   // Calculate actual win and loss amounts
   const closedTrades = trades.filter((trade) => trade.status === "closed");
@@ -35,9 +49,9 @@ export default function ProfitFactor() {
 
   if (isLoading) {
     return (
-      <Card style={{ height: "120px" }}>
-        <div style={{ textAlign: "center", padding: "20px 0" }}>
-          <Spin size="small" />
+      <Card style={{ height: "300px" }}>
+        <div style={{ textAlign: "center", padding: "100px 0" }}>
+          <Spin size="large" />
         </div>
       </Card>
     );

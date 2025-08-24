@@ -46,6 +46,7 @@ export async function createTrade(tradeData: TradeFormData): Promise<string> {
 
     // Build trade document with conditional fields
     const tradeDoc: Record<string, unknown> = {
+      userId: tradeData.userId,
       accountId: tradeData.accountId,
       symbol: tradeData.symbol,
       tickSize: tradeData.tickSize,
@@ -80,6 +81,7 @@ export async function createTrade(tradeData: TradeFormData): Promise<string> {
       const actionRef = doc(collection(db, TRADE_ACTIONS_COLLECTION));
 
       const actionDoc: Omit<TradeAction, "id"> = {
+        userId: tradeData.userId,
         tradeId: tradeRef.id,
         action: action.action,
         date: Timestamp.fromDate(action.date.toDate()), // Convert dayjs to Timestamp
@@ -118,6 +120,7 @@ export async function updateTrade(
   tradeData: TradeFormData
 ): Promise<void> {
   try {
+    // Validate required fields
     if (
       !tradeData.accountId ||
       !tradeData.symbol ||
@@ -142,6 +145,7 @@ export async function updateTrade(
 
     // Build trade document with conditional fields
     const tradeDoc: Record<string, unknown> = {
+      userId: tradeData.userId,
       accountId: tradeData.accountId,
       symbol: tradeData.symbol,
       tickSize: tradeData.tickSize,
@@ -182,6 +186,7 @@ export async function updateTrade(
       const actionRef = doc(collection(db, TRADE_ACTIONS_COLLECTION));
 
       const actionDoc: Omit<TradeAction, "id"> = {
+        userId: tradeData.userId,
         tradeId: tradeId,
         action: action.action,
         date: Timestamp.fromDate(action.date.toDate()),
@@ -308,10 +313,14 @@ function calculateTradeStats(
 }
 
 // Function to get trade actions for a specific trade
-export async function getTradeActions(tradeId: string): Promise<TradeAction[]> {
+export async function getTradeActions(
+  tradeId: string,
+  userId: string
+): Promise<TradeAction[]> {
   try {
     const q = query(
       collection(db, TRADE_ACTIONS_COLLECTION),
+      where("userId", "==", userId),
       where("tradeId", "==", tradeId),
       orderBy("order", "asc")
     );
@@ -323,6 +332,7 @@ export async function getTradeActions(tradeId: string): Promise<TradeAction[]> {
       const actionData = actionDoc.data();
       const action: TradeAction = {
         id: actionDoc.id,
+        userId: actionData.userId,
         tradeId: actionData.tradeId,
         action: actionData.action,
         date: actionData.date,
@@ -343,11 +353,66 @@ export async function getTradeActions(tradeId: string): Promise<TradeAction[]> {
   }
 }
 
+// Function to get trades for a specific account (without actions)
+export async function getTradesForAccount(
+  accountId: string,
+  userId: string
+): Promise<Trade[]> {
+  try {
+    if (!accountId || !userId) {
+      return [];
+    }
+
+    // Query trades filtered by account ID and userId
+    const q = query(
+      collection(db, TRADES_COLLECTION),
+      where("userId", "==", userId),
+      where("accountId", "==", accountId),
+      orderBy("createdAt", "desc")
+    );
+
+    const querySnapshot = await getDocs(q);
+
+    const trades: Trade[] = [];
+
+    // Process each trade document
+    for (const tradeDoc of querySnapshot.docs) {
+      const tradeData = tradeDoc.data() as Trade;
+
+      // Verify the trade belongs to the specified account
+      if (tradeData.accountId !== accountId) {
+        continue;
+      }
+
+      // Create trade object with ID
+      const trade: Trade = {
+        ...tradeData,
+        id: tradeDoc.id,
+      };
+
+      trades.push(trade);
+    }
+
+    return trades;
+  } catch (error) {
+    console.error("❌ Error fetching trades for account:", error);
+
+    if (error instanceof Error) {
+      console.error("🔍 Error details:", error.message);
+      throw new Error(`Failed to fetch trades: ${error.message}`);
+    }
+
+    throw new Error("Failed to fetch trades for account");
+  }
+}
+
 // Function to get trades for the primary account (without actions)
-export async function getTradesForPrimaryAccount(): Promise<Trade[]> {
+export async function getTradesForPrimaryAccount(
+  userId: string
+): Promise<Trade[]> {
   try {
     // Get the primary account
-    const primaryAccount = await getPrimaryAccount();
+    const primaryAccount = await getPrimaryAccount(userId);
     if (!primaryAccount) {
       return [];
     }

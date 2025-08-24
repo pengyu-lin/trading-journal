@@ -4,11 +4,15 @@ import { PlusOutlined } from "@ant-design/icons";
 import JournalTable from "../components/journal/JournalTable";
 import AddTradeForm from "../components/journal/AddTradeForm";
 import {
-  getTradesForPrimaryAccount,
+  getTradesForAccount,
   getTradeActions,
   deleteTrade,
 } from "../services/tradesService";
 import type { Trade, TradeAction } from "../types/trade";
+import { useSelectedAccount } from "../stores/accountSelectorStore";
+import { useAuthStore } from "../stores/authStore";
+import { useAccounts } from "../stores/accountSelectorStore";
+import { useNavigate } from "react-router-dom";
 
 const { Title } = Typography;
 
@@ -21,15 +25,31 @@ export default function Journal() {
     { trade: Trade; actions: TradeAction[] } | undefined
   >(undefined);
 
-  // Fetch trades when component mounts
+  // Get selected account, user, and accounts
+  const selectedAccount = useSelectedAccount();
+  const { user } = useAuthStore();
+  const accounts = useAccounts();
+  const navigate = useNavigate();
+
+  // Fetch trades when component mounts or selected account changes
   useEffect(() => {
-    fetchTrades();
-  }, []);
+    if (selectedAccount?.id) {
+      fetchTrades();
+    }
+  }, [selectedAccount?.id]);
 
   const fetchTrades = async () => {
     try {
+      if (!selectedAccount?.id || !user?.uid) {
+        setTrades([]);
+        return;
+      }
+
       setLoading(true);
-      const fetchedTrades = await getTradesForPrimaryAccount();
+      const fetchedTrades = await getTradesForAccount(
+        selectedAccount.id,
+        user.uid
+      );
       setTrades(fetchedTrades);
     } catch (error) {
       console.error("❌ Error fetching trades:", error);
@@ -40,6 +60,31 @@ export default function Journal() {
   };
 
   const handleAddTrade = () => {
+    // Check if there are any accounts
+    if (accounts.length === 0) {
+      message.warning({
+        content: (
+          <div>
+            <p>No trading accounts found!</p>
+            <p>Please create a trading account first before adding trades.</p>
+            <Button
+              type="link"
+              size="small"
+              onClick={() => {
+                message.destroy("no-accounts-warning"); // Close the popup
+                navigate("/accounts"); // Navigate to accounts page
+              }}
+              style={{ padding: 0, height: "auto" }}>
+              Go to Accounts →
+            </Button>
+          </div>
+        ),
+        duration: 5, // Auto-close after 5 seconds
+        key: "no-accounts-warning",
+      });
+      return;
+    }
+
     setAddTradeModalVisible(true);
   };
 
@@ -65,7 +110,11 @@ export default function Journal() {
 
   const handleEditTrade = async (trade: Trade) => {
     try {
-      const actions = await getTradeActions(trade.id!);
+      if (!user?.uid) {
+        message.error("User not authenticated");
+        return;
+      }
+      const actions = await getTradeActions(trade.id!, user.uid);
       setEditingTrade({ trade, actions });
       setEditTradeModalVisible(true);
     } catch (error) {

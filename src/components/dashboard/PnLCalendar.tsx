@@ -1,27 +1,40 @@
-import React from "react";
-import { Card, Spin, Button, Space } from "antd";
+import { Card, Button, Space, Spin } from "antd";
 import { LeftOutlined, RightOutlined } from "@ant-design/icons";
-import dayjs from "dayjs";
-import weekday from "dayjs/plugin/weekday";
-import isToday from "dayjs/plugin/isToday";
 import {
   useDailyStats,
   useDashboardLoading,
+  useDashboardActions,
 } from "../../stores/dashboardStore";
+import { useSelectedAccount } from "../../stores/accountSelectorStore";
+import { useAuthStore } from "../../stores/authStore";
+import { useState, useEffect } from "react";
+import dayjs, { type Dayjs } from "dayjs";
+import weekday from "dayjs/plugin/weekday";
+import isToday from "dayjs/plugin/isToday";
 
 dayjs.extend(weekday);
 dayjs.extend(isToday);
 
-type DailyStats = {
-  date: string; // YYYY-MM-DD
+interface DailyStats {
+  date: string;
   pnl: number;
   trades: number;
-};
+}
 
 export default function PnLCalendar() {
+  const [selectedDate, setSelectedDate] = useState<Dayjs>(dayjs());
   const dailyStats = useDailyStats();
   const isLoading = useDashboardLoading();
-  const [selectedDate, setSelectedDate] = React.useState(dayjs());
+  const { fetchTrades } = useDashboardActions();
+  const selectedAccount = useSelectedAccount();
+  const { user } = useAuthStore();
+
+  // Fetch trades when selected account changes
+  useEffect(() => {
+    if (selectedAccount?.id && user?.uid) {
+      fetchTrades(selectedAccount.id, user.uid);
+    }
+  }, [selectedAccount?.id, user?.uid, fetchTrades]);
 
   const year = selectedDate.year();
   const month = selectedDate.month();

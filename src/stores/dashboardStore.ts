@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { useShallow } from "zustand/react/shallow";
 import type { Trade } from "../types/trade";
-import { getTradesForPrimaryAccount } from "../services/tradesService";
+import { getTradesForAccount } from "../services/tradesService";
 
 // Simple state interface for Total PnL
 interface DashboardState {
@@ -12,7 +12,7 @@ interface DashboardState {
   isLoading: boolean;
 
   // Actions
-  fetchTrades: () => Promise<void>;
+  fetchTrades: (accountId?: string, userId?: string) => Promise<void>;
 }
 
 // Calculate total PnL from trades
@@ -89,10 +89,15 @@ export const useDashboardStore = create<DashboardState>((set) => ({
   trades: [],
   isLoading: false,
 
-  fetchTrades: async () => {
+  fetchTrades: async (accountId?: string, userId?: string) => {
     set({ isLoading: true });
     try {
-      const trades = await getTradesForPrimaryAccount();
+      if (!accountId || !userId) {
+        set({ trades: [], isLoading: false });
+        return;
+      }
+
+      const trades = await getTradesForAccount(accountId, userId);
       set({ trades, isLoading: false });
     } catch (error) {
       set({ isLoading: false });

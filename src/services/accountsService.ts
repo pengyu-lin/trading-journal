@@ -40,12 +40,13 @@ export async function createAccount(
 
     // If this account is being set as primary, unset all other primary accounts
     if (accountData.isPrimary) {
-      await ensureSinglePrimaryAccount();
+      await ensureSinglePrimaryAccount(accountData.userId);
     }
 
     // Create the account document
     const accountRef = doc(collection(db, ACCOUNTS_COLLECTION));
     const account: Omit<TradingAccount, "id"> = {
+      userId: accountData.userId,
       name: accountData.name,
       isActive: accountData.isActive,
       isPrimary: accountData.isPrimary,
@@ -59,6 +60,7 @@ export async function createAccount(
     for (const transactionData of accountData.transactions) {
       const transactionRef = doc(collection(db, TRANSACTIONS_COLLECTION));
       const transaction: Omit<AccountTransaction, "id"> = {
+        userId: accountData.userId,
         accountId: accountRef.id,
         type: transactionData.type,
         amount: transactionData.amount,
@@ -104,10 +106,13 @@ export async function getAccount(
 /**
  * Get all accounts for a user (including active and inactive)
  */
-export async function getAccounts(): Promise<TradingAccount[]> {
+export async function getAccounts(userId: string): Promise<TradingAccount[]> {
   try {
-    // Always get all accounts (active and inactive)
-    const accountsQuery = query(collection(db, ACCOUNTS_COLLECTION));
+    // Get accounts filtered by userId
+    const accountsQuery = query(
+      collection(db, ACCOUNTS_COLLECTION),
+      where("userId", "==", userId)
+    );
 
     const accountsSnapshot = await getDocs(accountsQuery);
     const accounts: TradingAccount[] = [];
@@ -166,7 +171,11 @@ export async function updateAccountWithTransactions(
 
     // If this account is being set as primary, unset all other primary accounts
     if (accountUpdates.isPrimary) {
-      await ensureSinglePrimaryAccount(accountId);
+      // We need to get the userId from the existing account
+      const existingAccount = await getAccount(accountId);
+      if (existingAccount?.userId) {
+        await ensureSinglePrimaryAccount(existingAccount.userId, accountId);
+      }
     }
 
     // Update the account document
@@ -356,10 +365,12 @@ export async function deleteTransaction(transactionId: string): Promise<void> {
  * Ensure only one account is primary by unsetting others
  */
 async function ensureSinglePrimaryAccount(
+  userId: string,
   excludeAccountId?: string
 ): Promise<void> {
   const existingAccountsQuery = query(
     collection(db, ACCOUNTS_COLLECTION),
+    where("userId", "==", userId),
     where("isPrimary", "==", true)
   );
   const existingAccountsSnapshot = await getDocs(existingAccountsQuery);
@@ -382,12 +393,14 @@ async function ensureSinglePrimaryAccount(
  * Check if an account name already exists
  */
 export async function isAccountNameTaken(
+  userId: string,
   name: string,
   excludeAccountId?: string
 ): Promise<boolean> {
   try {
     const accountsQuery = query(
       collection(db, ACCOUNTS_COLLECTION),
+      where("userId", "==", userId),
       where("name", "==", name)
     );
 
@@ -402,12 +415,15 @@ export async function isAccountNameTaken(
 }
 
 /**
- * Get the primary trading account
+ * Get the primary trading account for a specific user
  */
-export async function getPrimaryAccount(): Promise<TradingAccount | null> {
+export async function getPrimaryAccount(
+  userId: string
+): Promise<TradingAccount | null> {
   try {
     const primaryAccountQuery = query(
       collection(db, ACCOUNTS_COLLECTION),
+      where("userId", "==", userId),
       where("isPrimary", "==", true),
       where("isActive", "==", true)
     );

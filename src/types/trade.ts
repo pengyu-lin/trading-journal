@@ -8,6 +8,7 @@ import type { Dayjs } from "dayjs";
 // Trading Account - User can have multiple accounts
 export interface TradingAccount {
   id?: string;
+  userId: string; // User who owns this account
   name: string; // e.g., "Main Account", "Swing Trading", "Day Trading"
   isActive: boolean;
   isPrimary: boolean; // Indicates if this is the primary/default account
@@ -19,6 +20,7 @@ export interface TradingAccount {
 // Account transactions (deposits/withdrawals)
 export interface AccountTransaction {
   id?: string;
+  userId: string; // User who owns this transaction
   accountId: string; // Which account this transaction affects
   type: "deposit" | "withdrawal";
   amount: number;
@@ -33,6 +35,7 @@ export interface AccountTransaction {
 // Individual buy/sell action within a trade
 export interface TradeAction {
   id?: string;
+  userId: string; // User who owns this action
   action: "buy" | "sell";
   date: Timestamp;
   qty: number;
@@ -47,6 +50,7 @@ export interface TradeAction {
 // A complete trade (can have multiple actions)
 export interface Trade {
   id?: string;
+  userId: string; // User who owns this trade
   accountId: string; // Which trading account this trade belongs to
   symbol: string; // Stock/ETF symbol
   tickSize: number;
@@ -68,6 +72,7 @@ export interface Trade {
 
 // For form submission when adding a new account
 export interface AccountFormData {
+  userId: string; // User who owns this account
   name: string;
   isActive: boolean;
   isPrimary: boolean;
@@ -76,6 +81,7 @@ export interface AccountFormData {
 
 // For form submission when adding account transactions
 export interface TransactionFormData {
+  userId: string; // User who owns this transaction
   accountId: string;
   type: "deposit" | "withdrawal";
   amount: number;
@@ -85,6 +91,7 @@ export interface TransactionFormData {
 
 // For form submission when adding a new trade
 export interface TradeFormData {
+  userId: string; // User who owns this trade
   accountId: string; // Which account to add the trade to
   symbol: string;
   tickSize: number;
@@ -128,24 +135,3 @@ export interface AccountWithStats extends TradingAccount {
   currentBalance: number; // netDeposits + totalPnL
   availableCash: number; // currentBalance - openPositionsValue
 }
-
-// ============================================================================
-// FUTURE INTERFACES (Commented out for now)
-// ============================================================================
-
-// Overall user statistics across all accounts
-// export interface UserTradeStats {
-//   totalAccounts: number;
-//   totalPnL: number;
-//   totalTrades: number;
-//   openTrades: number;
-//   closedTrades: number;
-//   overallWinRate: number;
-//   overallProfitFactor: number;
-//   totalFees: number;
-//   // Overall cash flow
-//   totalDeposits: number;
-//   totalWithdrawals: number;
-//   netDeposits: number;
-//   totalPortfolioValue: number;
-// }

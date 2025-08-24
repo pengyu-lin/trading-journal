@@ -16,6 +16,7 @@ import dayjs from "dayjs";
 import type { AccountFormData } from "../../types/trade";
 import { useEffect } from "react";
 import { isAccountNameTaken } from "../../services/accountsService";
+import { useAuthStore } from "../../stores/authStore";
 
 const { Option } = Select;
 
@@ -39,39 +40,46 @@ export default function AddAccountForm({
   loading = false,
 }: AddAccountFormProps) {
   const [form] = Form.useForm<AccountFormData>();
+  const { user } = useAuthStore();
+
+  // Only create form instance when modal is visible
+  const formInstance = visible ? form : undefined;
 
   const handleSubmit = async (values: AccountFormData) => {
     try {
       await onSubmit(values);
-      form.resetFields();
+      if (formInstance) {
+        formInstance.resetFields();
+      }
     } catch {
       // Error handling is done in the parent component
     }
   };
 
   const handleCancel = () => {
-    form.resetFields();
+    if (formInstance) {
+      formInstance.resetFields();
+    }
     onCancel();
   };
 
-  const onChange = (
-    date: dayjs.Dayjs | null,
-    dateString: string | string[]
-  ) => {
+  const onChange = () => {
     // Date change handler
   };
 
   // Set form values when editing
   useEffect(() => {
+    if (!formInstance) return; // Don't set values if form doesn't exist
+
     if (visible && mode === "edit" && initialData) {
-      form.setFieldsValue({
+      formInstance.setFieldsValue({
         name: initialData.name,
         isActive: initialData.isActive,
         isPrimary: initialData.isPrimary,
         transactions: initialData.transactions,
       });
     } else if (visible && mode === "add") {
-      form.setFieldsValue({
+      formInstance.setFieldsValue({
         name: "",
         isActive: true,
         isPrimary: false,
@@ -85,7 +93,7 @@ export default function AddAccountForm({
         ],
       });
     }
-  }, [visible, mode, initialData, form]);
+  }, [visible, mode, initialData, formInstance]);
 
   const getModalTitle = () => {
     return mode === "add" ? "Add New Trading Account" : "Edit Trading Account";
@@ -101,9 +109,17 @@ export default function AddAccountForm({
       return Promise.resolve();
     }
 
+    if (!user?.uid) {
+      return Promise.resolve(); // Skip validation if user not authenticated
+    }
+
     try {
       // For edit mode, exclude the current account being edited
-      const isTaken = await isAccountNameTaken(value.trim(), editingAccountId);
+      const isTaken = await isAccountNameTaken(
+        user.uid,
+        value.trim(),
+        editingAccountId
+      );
 
       if (isTaken) {
         return Promise.reject(
@@ -136,7 +152,7 @@ export default function AddAccountForm({
         width={800}
         destroyOnHidden>
         <Form
-          form={form}
+          form={formInstance}
           layout="vertical"
           onFinish={handleSubmit}
           validateTrigger={["onBlur", "onChange", "onSubmit"]}
@@ -146,7 +162,7 @@ export default function AddAccountForm({
             transactions: [
               {
                 type: "deposit",
-                amount: null,
+                amount: undefined,
                 date: dayjs(),
                 description: "",
               },

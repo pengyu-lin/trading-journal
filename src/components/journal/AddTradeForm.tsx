@@ -22,8 +22,8 @@ import {
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import type { TradingAccount, Trade, TradeAction } from "../../types/trade";
-import { getPrimaryAccount } from "../../services/accountsService";
 import { createTrade, updateTrade } from "../../services/tradesService";
+import { useSelectedAccount } from "../../stores/accountSelectorStore";
 
 const { Option } = Select;
 
@@ -48,25 +48,11 @@ export default function AddTradeForm({
   const [form] = Form.useForm();
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
-  const [primaryAccount, setPrimaryAccount] = useState<TradingAccount | null>(
-    null
-  );
+  const selectedAccount = useSelectedAccount();
 
-  // Load primary account when component mounts
+  // Load selected account when component mounts
   useEffect(() => {
-    const loadPrimaryAccount = async () => {
-      try {
-        const account = await getPrimaryAccount();
-        setPrimaryAccount(account);
-      } catch (error) {
-        console.error("Failed to load primary account:", error);
-        message.error("Failed to load primary account");
-      }
-    };
-
     if (visible) {
-      loadPrimaryAccount();
-
       // If editing, populate form with existing data
       if (mode === "edit" && editData) {
         const { trade, actions } = editData;
@@ -81,7 +67,6 @@ export default function AddTradeForm({
         }));
 
         form.setFieldsValue({
-          accountId: trade.accountId,
           symbol: trade.symbol,
           tickSize: trade.tickSize,
           tickValue: trade.tickValue,
@@ -93,17 +78,26 @@ export default function AddTradeForm({
         // Reset form for create mode
         form.resetFields();
         setUploadedImages([]);
+
+        // Set the selected account and userId for new trades
+        if (selectedAccount?.id) {
+          form.setFieldValue("accountId", selectedAccount.id);
+          form.setFieldValue("userId", selectedAccount.userId);
+        }
       }
     }
-  }, [visible, mode, editData, form]);
+  }, [visible, mode, editData, form, selectedAccount?.id]);
 
   const handleSubmit = async (values: Record<string, unknown>) => {
     try {
       setLoading(true);
 
-      // Set the primary account ID if not already set
-      if (!values.accountId && primaryAccount) {
-        values.accountId = primaryAccount.id;
+      // Set the selected account ID and userId if not already set
+      if (!values.accountId && selectedAccount) {
+        values.accountId = selectedAccount.id;
+      }
+      if (!values.userId && selectedAccount) {
+        values.userId = selectedAccount.userId;
       }
 
       // Ensure screenshots field is properly set
@@ -198,18 +192,6 @@ export default function AddTradeForm({
             ],
             screenshots: [], // Initialize screenshots as empty array
           }}>
-          {/* Account Selection */}
-          <Form.Item
-            name="accountId"
-            label="Trading Account"
-            rules={[{ required: true, message: "Please select an account" }]}>
-            <Select placeholder="Select account" disabled={!primaryAccount}>
-              {primaryAccount && (
-                <Option value={primaryAccount.id}>{primaryAccount.name}</Option>
-              )}
-            </Select>
-          </Form.Item>
-
           {/* First row: Symbol, Tick Size, Tick Value */}
           <Row gutter={16}>
             <Col span={8}>

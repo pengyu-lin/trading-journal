@@ -13,6 +13,8 @@ import dayjs from "dayjs";
 import { Timestamp } from "firebase/firestore";
 import AddAccountForm from "./AddAccountForm";
 import type { AccountFormData } from "../../types/trade";
+import { useAccountSelectorActions } from "../../stores/accountSelectorStore";
+import { useAuthStore } from "../../stores/authStore";
 
 interface AccountsTableProps {
   refreshKey: number;
@@ -36,11 +38,13 @@ export default function AccountsTable({ refreshKey }: AccountsTableProps) {
   const [selectedAccount, setSelectedAccount] = useState<TradingAccount | null>(
     null
   );
+  const { refreshAccounts } = useAccountSelectorActions();
+  const { user } = useAuthStore();
 
   const fetchAccounts = async () => {
     try {
       setLoading(true);
-      const accountsData = await getAccounts();
+      const accountsData = await getAccounts(user?.uid || "");
       setAccounts(accountsData);
     } catch (error) {
       console.error("Error fetching accounts:", error);
@@ -62,6 +66,10 @@ export default function AccountsTable({ refreshKey }: AccountsTableProps) {
         await deleteAccount(selectedAccount.id!);
         message.success("Account deleted successfully!");
         await fetchAccounts();
+
+        // Refresh the account selector store
+        await refreshAccounts(user?.uid || "");
+
         setDeleteModalVisible(false);
         setSelectedAccount(null);
       } catch (error) {
@@ -120,6 +128,9 @@ export default function AccountsTable({ refreshKey }: AccountsTableProps) {
       message.success("Account updated successfully");
       setEditModalVisible(false);
       await fetchAccounts();
+
+      // Refresh the account selector store
+      await refreshAccounts(user?.uid || "");
     } catch (error) {
       console.error("Error updating account:", error);
       message.error("Failed to update account");
@@ -227,12 +238,14 @@ export default function AccountsTable({ refreshKey }: AccountsTableProps) {
                 name: editingAccount.name,
                 isActive: editingAccount.isActive,
                 isPrimary: editingAccount.isPrimary,
+                userId: editingAccount.userId,
                 transactions: accountTransactions.map((t) => ({
                   id: t.id,
                   type: t.type,
                   amount: t.amount,
                   date: dayjs(t.date.toDate()),
                   description: t.description || "",
+                  userId: t.userId,
                 })),
               }
             : undefined
