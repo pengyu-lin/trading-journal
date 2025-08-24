@@ -21,7 +21,7 @@ import {
   DeleteOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
-import type { TradingAccount, Trade, TradeAction } from "../../types/trade";
+import type { Trade, TradeAction } from "../../types/trade";
 import { createTrade, updateTrade } from "../../services/tradesService";
 import { useSelectedAccount } from "../../stores/accountSelectorStore";
 
@@ -111,7 +111,7 @@ export default function AddTradeForm({
         // Success message handled by parent component
       } else {
         // Create new trade
-        const tradeId = await createTrade(values as any);
+        await createTrade(values as any);
         // Success message handled by parent component
       }
 
@@ -136,10 +136,7 @@ export default function AddTradeForm({
     onCancel();
   };
 
-  const onChange = (
-    date: dayjs.Dayjs | null,
-    dateString: string | string[]
-  ) => {
+  const onChange = () => {
     // Date change handler
   };
 

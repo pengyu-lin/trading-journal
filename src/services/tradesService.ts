@@ -45,7 +45,21 @@ export async function createTrade(tradeData: TradeFormData): Promise<string> {
     const tradeRef = doc(collection(db, TRADES_COLLECTION));
 
     // Build trade document with conditional fields
-    const tradeDoc: Record<string, unknown> = {
+    const tradeDoc: {
+      userId: string;
+      accountId: string;
+      symbol: string;
+      tickSize: number;
+      tickValue: number;
+      status: string;
+      note: string;
+      screenshots: string[];
+      avgEntryPrice: number;
+      createdAt: Timestamp;
+      updatedAt: Timestamp;
+      avgExitPrice?: number;
+      totalReturn?: number;
+    } = {
       userId: tradeData.userId,
       accountId: tradeData.accountId,
       symbol: tradeData.symbol,
@@ -103,10 +117,10 @@ export async function createTrade(tradeData: TradeFormData): Promise<string> {
     // 4. Return the trade ID
     return tradeRef.id;
   } catch (error) {
-    console.error("❌ Error creating trade:", error);
+    console.error("Error creating trade:", error);
 
     if (error instanceof Error) {
-      console.error("🔍 Error details:", error.message);
+      console.error("Error details:", error.message);
       throw new Error(`Failed to create trade: ${error.message}`);
     }
 
@@ -144,7 +158,20 @@ export async function updateTrade(
     const tradeRef = doc(db, TRADES_COLLECTION, tradeId);
 
     // Build trade document with conditional fields
-    const tradeDoc: Record<string, unknown> = {
+    const tradeDoc: {
+      userId: string;
+      accountId: string;
+      symbol: string;
+      tickSize: number;
+      tickValue: number;
+      status: string;
+      note: string;
+      screenshots: string[];
+      avgEntryPrice: number;
+      updatedAt: Timestamp;
+      avgExitPrice?: number;
+      totalReturn?: number;
+    } = {
       userId: tradeData.userId,
       accountId: tradeData.accountId,
       symbol: tradeData.symbol,
@@ -203,10 +230,10 @@ export async function updateTrade(
 
     await batch.commit();
   } catch (error) {
-    console.error("❌ Error updating trade:", error);
+    console.error("Error updating trade:", error);
 
     if (error instanceof Error) {
-      console.error("🔍 Error details:", error.message);
+      console.error("Error details:", error.message);
       throw new Error(`Failed to update trade: ${error.message}`);
     }
 
@@ -237,10 +264,10 @@ export async function deleteTrade(tradeId: string): Promise<void> {
     // 3. Execute the batch
     await batch.commit();
   } catch (error) {
-    console.error("❌ Error deleting trade:", error);
+    console.error("Error deleting trade:", error);
 
     if (error instanceof Error) {
-      console.error("🔍 Error details:", error.message);
+      console.error("Error details:", error.message);
       throw new Error(`Failed to delete trade: ${error.message}`);
     }
 
@@ -348,7 +375,7 @@ export async function getTradeActions(
 
     return actions;
   } catch (error) {
-    console.error("❌ Error fetching trade actions:", error);
+    console.error("Error fetching trade actions:", error);
     throw new Error("Failed to fetch trade actions");
   }
 }
@@ -395,10 +422,10 @@ export async function getTradesForAccount(
 
     return trades;
   } catch (error) {
-    console.error("❌ Error fetching trades for account:", error);
+    console.error("Error fetching trades for account:", error);
 
     if (error instanceof Error) {
-      console.error("🔍 Error details:", error.message);
+      console.error("Error details:", error.message);
       throw new Error(`Failed to fetch trades: ${error.message}`);
     }
 
@@ -448,10 +475,10 @@ export async function getTradesForPrimaryAccount(
 
     return trades;
   } catch (error) {
-    console.error("❌ Error fetching trades for primary account:", error);
+    console.error("Error fetching trades for primary account:", error);
 
     if (error instanceof Error) {
-      console.error("🔍 Error details:", error.message);
+      console.error("Error details:", error.message);
       throw new Error(`Failed to fetch trades: ${error.message}`);
     }
 

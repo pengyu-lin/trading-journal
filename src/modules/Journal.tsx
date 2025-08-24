@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Typography, Button, message } from "antd";
+import { Button, message } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import JournalTable from "../components/journal/JournalTable";
 import AddTradeForm from "../components/journal/AddTradeForm";
@@ -13,8 +13,6 @@ import { useSelectedAccount } from "../stores/accountSelectorStore";
 import { useAuthStore } from "../stores/authStore";
 import { useAccounts } from "../stores/accountSelectorStore";
 import { useNavigate } from "react-router-dom";
-
-const { Title } = Typography;
 
 export default function Journal() {
   const [trades, setTrades] = useState<Trade[]>([]);
@@ -52,7 +50,7 @@ export default function Journal() {
       );
       setTrades(fetchedTrades);
     } catch (error) {
-      console.error("❌ Error fetching trades:", error);
+      console.error("Error fetching trades:", error);
       message.error("Failed to fetch trades");
     } finally {
       setLoading(false);
@@ -92,7 +90,7 @@ export default function Journal() {
     setAddTradeModalVisible(false);
   };
 
-  const handleAddTradeSubmit = async (values: Record<string, unknown>) => {
+  const handleAddTradeSubmit = async () => {
     try {
       // Refresh the trades list after successful creation
       await fetchTrades();
@@ -102,7 +100,7 @@ export default function Journal() {
 
       message.success("Trade added successfully!");
     } catch (error) {
-      console.error("❌ Error creating trade:", error);
+      console.error("Error creating trade:", error);
       message.error("Failed to create trade. Please try again.");
       throw error; // Re-throw to let the form handle the error
     }
@@ -118,12 +116,12 @@ export default function Journal() {
       setEditingTrade({ trade, actions });
       setEditTradeModalVisible(true);
     } catch (error) {
-      console.error("❌ Error loading trade actions:", error);
+      console.error("Error loading trade actions:", error);
       message.error("Failed to load trade for editing");
     }
   };
 
-  const handleEditTradeSubmit = async (values: Record<string, unknown>) => {
+  const handleEditTradeSubmit = async () => {
     try {
       // Refresh the trades list after successful update
       await fetchTrades();
@@ -134,7 +132,7 @@ export default function Journal() {
 
       message.success("Trade updated successfully!");
     } catch (error) {
-      console.error("❌ Error updating trade:", error);
+      console.error("Error updating trade:", error);
       message.error("Failed to update trade. Please try again.");
       throw error; // Re-throw to let the form handle the error
     }
@@ -154,7 +152,7 @@ export default function Journal() {
 
       message.success("Trade deleted successfully!");
     } catch (error) {
-      console.error("❌ Error deleting trade:", error);
+      console.error("Error deleting trade:", error);
       message.error("Failed to delete trade. Please try again.");
       throw error;
     }
