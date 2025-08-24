@@ -445,7 +445,7 @@ export async function getPrimaryAccount(
 
     return primaryAccount;
   } catch (error) {
-    console.error("❌ Error getting primary account:", error);
+    console.error("Error getting primary account:", error);
     throw new Error("Failed to get primary account");
   }
 }

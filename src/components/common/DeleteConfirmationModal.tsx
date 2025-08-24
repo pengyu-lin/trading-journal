@@ -49,8 +49,8 @@ export default function DeleteConfirmationModal({
           {entityName.toLowerCase()} <strong>"{entityIdentifier}"</strong>?
         </p>
         <p style={{ color: "#ff4d4f", fontSize: "12px", marginTop: "8px" }}>
-          ⚠️ This action cannot be undone. The {entityName.toLowerCase()} and
-          all its data will be permanently removed from the database.
+          This action cannot be undone. The {entityName.toLowerCase()} and all
+          its data will be permanently removed from the database.
         </p>
       </div>
     </Modal>
