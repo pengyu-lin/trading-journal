@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Table, Tag, Button, Typography, message, Space } from "antd";
+import { Table, Tag, Button, message, Space, Card } from "antd";
 import { DeleteOutlined, EditOutlined } from "@ant-design/icons";
 import type { Trade, TradeAction } from "../../types/trade";
 import type { Key } from "react";
@@ -12,8 +12,6 @@ import {
 } from "../../services/tradesService";
 import { useAuthStore } from "../../stores/authStore";
 import { useSelectedAccount } from "../../stores/accountSelectorStore";
-
-const { Text } = Typography;
 
 interface JournalTableProps {
   refreshKey: number;
@@ -29,8 +27,20 @@ export default function JournalTable({ refreshKey }: JournalTableProps) {
     { trade: Trade; actions: TradeAction[] } | undefined
   >(undefined);
   const [deletingTradeId, setDeletingTradeId] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
   const { user } = useAuthStore();
   const selectedAccount = useSelectedAccount();
+
+  // Check if device is mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   const fetchTrades = async () => {
     try {
@@ -133,30 +143,58 @@ export default function JournalTable({ refreshKey }: JournalTableProps) {
       title: "Date",
       dataIndex: "createdAt",
       key: "createdAt",
-      render: (timestamp: unknown) => {
+      render: (timestamp: unknown, record: Trade) => {
         if (!timestamp) return "N/A";
         const date = (timestamp as { toDate: () => Date }).toDate
           ? (timestamp as { toDate: () => Date }).toDate()
           : new Date(timestamp as string | number);
-        return date.toLocaleDateString();
+        return (
+          <div>
+            <div style={{ fontWeight: "500" }}>{date.toLocaleDateString()}</div>
+            {/* Show additional info on mobile in the date column */}
+            {isMobile && (
+              <div
+                style={{ fontSize: "12px", color: "#666", marginTop: "4px" }}>
+                <div>
+                  Symbol: <strong>{record.symbol}</strong>
+                </div>
+                <div>
+                  Status:{" "}
+                  <Tag color={record.status === "closed" ? "green" : "blue"}>
+                    {record.status.toUpperCase()}
+                  </Tag>
+                </div>
+              </div>
+            )}
+          </div>
+        );
       },
     },
-    { title: "Symbol", dataIndex: "symbol", key: "symbol" },
-    {
-      title: "Status",
-      dataIndex: "status",
-      key: "status",
-      filters: [
-        { text: "Open", value: "open" },
-        { text: "Closed", value: "closed" },
-      ],
-      onFilter: (value: boolean | Key, record: Trade) =>
-        record.status === value,
-      render: (status: string) => {
-        const color = status === "closed" ? "green" : "blue";
-        return <Tag color={color}>{status.toUpperCase()}</Tag>;
-      },
-    },
+    // Hide these columns on mobile since they're shown in the date column
+    ...(isMobile
+      ? []
+      : [
+          {
+            title: "Symbol",
+            dataIndex: "symbol",
+            key: "symbol",
+          },
+          {
+            title: "Status",
+            dataIndex: "status",
+            key: "status",
+            filters: [
+              { text: "Open", value: "open" },
+              { text: "Closed", value: "closed" },
+            ],
+            onFilter: (value: boolean | Key, record: Trade) =>
+              record.status === value,
+            render: (status: string) => {
+              const color = status === "closed" ? "green" : "blue";
+              return <Tag color={color}>{status.toUpperCase()}</Tag>;
+            },
+          },
+        ]),
     {
       title: "Entry Price",
       dataIndex: "avgEntryPrice",
@@ -176,9 +214,9 @@ export default function JournalTable({ refreshKey }: JournalTableProps) {
       render: (value: number) => {
         if (value === undefined || value === null) return "N/A";
         return (
-          <Text style={{ color: value >= 0 ? "green" : "red" }}>
+          <div style={{ color: value >= 0 ? "green" : "red" }}>
             {value >= 0 ? "+" : ""}${value.toFixed(2)}
-          </Text>
+          </div>
         );
       },
     },
@@ -186,7 +224,7 @@ export default function JournalTable({ refreshKey }: JournalTableProps) {
       title: "Actions",
       key: "actions",
       render: (_: unknown, record: Trade) => (
-        <Space size="small">
+        <Space size="small" direction={isMobile ? "vertical" : "horizontal"}>
           <Button
             type="text"
             icon={<EditOutlined />}
@@ -219,13 +257,113 @@ export default function JournalTable({ refreshKey }: JournalTableProps) {
 
   return (
     <>
-      <Table
-        dataSource={trades}
-        columns={columns}
-        pagination={{ pageSize: 10 }}
-        rowKey="id"
-        loading={loading}
-      />
+      {isMobile ? (
+        // Mobile Card Layout
+        <div style={{ display: "grid", gap: "16px", padding: "0 8px" }}>
+          {trades.map((trade) => (
+            <Card
+              key={trade.id}
+              size="small"
+              style={{
+                border: "1px solid #f0f0f0",
+                borderRadius: "8px",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+              }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: "12px",
+                }}>
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <span style={{ fontWeight: "600", fontSize: "16px" }}>
+                    {trade.symbol}
+                  </span>
+                  <Tag color={trade.status === "closed" ? "green" : "blue"}>
+                    {trade.status.toUpperCase()}
+                  </Tag>
+                </div>
+                <span style={{ fontSize: "14px", color: "#666" }}>
+                  {trade.createdAt
+                    ? (trade.createdAt as { toDate: () => Date }).toDate
+                      ? (trade.createdAt as { toDate: () => Date })
+                          .toDate()
+                          .toLocaleDateString()
+                      : new Date(
+                          trade.createdAt as unknown as string | number
+                        ).toLocaleDateString()
+                    : "N/A"}
+                </span>
+              </div>
+
+              <div
+                style={{
+                  marginBottom: "12px",
+                  fontSize: "14px",
+                  color: "#666",
+                }}>
+                <div>Entry: {trade.avgEntryPrice?.toFixed(2) || "N/A"}</div>
+                <div>
+                  Exit:{" "}
+                  {trade.avgExitPrice
+                    ? `$${trade.avgExitPrice.toFixed(2)}`
+                    : "N/A"}
+                </div>
+                <div>
+                  PnL:{" "}
+                  <span
+                    style={{
+                      color:
+                        trade.totalReturn && trade.totalReturn >= 0
+                          ? "green"
+                          : "red",
+                    }}>
+                    {trade.totalReturn !== undefined &&
+                    trade.totalReturn !== null
+                      ? `${
+                          trade.totalReturn >= 0 ? "+" : ""
+                        }$${trade.totalReturn.toFixed(2)}`
+                      : "N/A"}
+                  </span>
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: "8px" }}>
+                <Button
+                  type="text"
+                  icon={<EditOutlined />}
+                  size="small"
+                  onClick={() => handleEditClick(trade)}
+                  style={{ flex: 1 }}>
+                  Edit
+                </Button>
+                <Button
+                  type="text"
+                  icon={<DeleteOutlined />}
+                  size="small"
+                  danger
+                  loading={deletingTradeId === trade.id}
+                  disabled={deletingTradeId !== null}
+                  onClick={() => handleDeleteClick(trade)}
+                  style={{ flex: 1 }}>
+                  Delete
+                </Button>
+              </div>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        // Desktop Table Layout
+        <Table
+          dataSource={trades}
+          columns={columns}
+          pagination={{ pageSize: 10 }}
+          rowKey="id"
+          loading={loading}
+        />
+      )}
 
       {/* Edit Trade Form Modal */}
       <AddTradeForm
