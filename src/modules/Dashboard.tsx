@@ -3,6 +3,7 @@ import { Row, Col } from "antd";
 import TotalPnl from "../components/dashboard/TotalPnl";
 import TradeWinPercent from "../components/dashboard/TradeWinPercent";
 import ProfitFactor from "../components/dashboard/ProfitFactor";
+import AccountBalance from "../components/dashboard/AccountBalance";
 import PnLCalendar from "../components/dashboard/PnLCalendar";
 import { useDashboardActions } from "../stores/dashboardStore";
 
@@ -17,6 +18,9 @@ export default function Dashboard() {
   return (
     <div style={{ padding: 20 }}>
       <Row gutter={[16, 16]}>
+        <Col span={6}>
+          <AccountBalance />
+        </Col>
         <Col span={6}>
           <TotalPnl />
         </Col>

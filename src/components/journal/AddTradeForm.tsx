@@ -21,7 +21,7 @@ import {
   DeleteOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
-import type { Trade, TradeAction } from "../../types/trade";
+import type { Trade, TradeAction, TradeFormData } from "../../types/trade";
 import { createTrade, updateTrade } from "../../services/tradesService";
 import { useSelectedAccount } from "../../stores/accountSelectorStore";
 
@@ -30,12 +30,13 @@ const { Option } = Select;
 interface AddTradeFormProps {
   visible: boolean;
   onCancel: () => void;
-  onSubmit: (values: Record<string, unknown>) => Promise<void>;
-  mode: "create" | "edit";
+  onSubmit: (values: TradeFormData) => Promise<void>;
+  mode: "add" | "edit";
   editData?: {
     trade: Trade;
     actions: TradeAction[];
   };
+  loading?: boolean;
 }
 
 export default function AddTradeForm({
@@ -44,10 +45,10 @@ export default function AddTradeForm({
   onSubmit,
   mode,
   editData,
+  loading = false,
 }: AddTradeFormProps) {
   const [form] = Form.useForm();
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
   const selectedAccount = useSelectedAccount();
 
   // Load selected account when component mounts
@@ -88,15 +89,13 @@ export default function AddTradeForm({
     }
   }, [visible, mode, editData, form, selectedAccount?.id]);
 
-  const handleSubmit = async (values: Record<string, unknown>) => {
+  const handleSubmit = async (values: TradeFormData) => {
     try {
-      setLoading(true);
-
       // Set the selected account ID and userId if not already set
-      if (!values.accountId && selectedAccount) {
+      if (!values.accountId && selectedAccount?.id) {
         values.accountId = selectedAccount.id;
       }
-      if (!values.userId && selectedAccount) {
+      if (!values.userId && selectedAccount?.userId) {
         values.userId = selectedAccount.userId;
       }
 
@@ -107,11 +106,11 @@ export default function AddTradeForm({
 
       if (mode === "edit" && editData) {
         // Update existing trade
-        await updateTrade(editData.trade.id!, values as any);
+        await updateTrade(editData.trade.id!, values);
         // Success message handled by parent component
       } else {
         // Create new trade
-        await createTrade(values as any);
+        await createTrade(values);
         // Success message handled by parent component
       }
 
@@ -126,14 +125,20 @@ export default function AddTradeForm({
       const action = mode === "edit" ? "updating" : "adding";
       message.error(`Failed to ${action} trade. Please try again.`);
       throw error; // Re-throw to let the form handle the error
-    } finally {
-      setLoading(false);
     }
   };
 
   const handleCancel = () => {
     form.resetFields();
     onCancel();
+  };
+
+  const getModalTitle = () => {
+    return mode === "edit" ? "Edit Trade" : "Add New Trade";
+  };
+
+  const getSubmitButtonText = () => {
+    return mode === "edit" ? "Update Trade" : "Add Trade";
   };
 
   const onChange = () => {
@@ -167,7 +172,7 @@ export default function AddTradeForm({
         `}
       </style>
       <Modal
-        title={mode === "edit" ? "Edit Trade" : "Add New Trade"}
+        title={getModalTitle()}
         open={visible}
         onCancel={handleCancel}
         footer={null}
@@ -202,7 +207,8 @@ export default function AddTradeForm({
                     max: 10,
                     message: "Symbol must be between 1 and 10 characters",
                   },
-                ]}>
+                ]}
+                validateTrigger={["onBlur", "onChange"]}>
                 <Input placeholder="e.g., AAPL" />
               </Form.Item>
             </Col>
@@ -217,11 +223,12 @@ export default function AddTradeForm({
                     min: 0.0001,
                     message: "Tick size must be greater than 0",
                   },
-                ]}>
+                ]}
+                validateTrigger={["onBlur", "onChange"]}>
                 <InputNumber
                   style={{ width: "100%" }}
                   placeholder="e.g., 0.01"
-                  precision={4}
+                  precision={2}
                 />
               </Form.Item>
             </Col>
@@ -236,7 +243,8 @@ export default function AddTradeForm({
                     min: 0.01,
                     message: "Tick value must be greater than 0",
                   },
-                ]}>
+                ]}
+                validateTrigger={["onBlur", "onChange"]}>
                 <InputNumber
                   style={{ width: "100%" }}
                   placeholder="e.g., 0.01"
@@ -334,6 +342,7 @@ export default function AddTradeForm({
                             message: "Quantity must be greater than 0",
                           },
                         ]}
+                        validateTrigger={["onBlur", "onChange"]}
                         style={{ marginBottom: 0 }}>
                         <InputNumber
                           style={{ width: "100%" }}
@@ -354,6 +363,7 @@ export default function AddTradeForm({
                             message: "Price must be greater than 0",
                           },
                         ]}
+                        validateTrigger={["onBlur", "onChange"]}
                         style={{ marginBottom: 0 }}>
                         <InputNumber
                           style={{ width: "100%" }}
@@ -374,6 +384,7 @@ export default function AddTradeForm({
                             message: "Fee must be greater than or equal to 0",
                           },
                         ]}
+                        validateTrigger={["onBlur", "onChange"]}
                         style={{ marginBottom: 0 }}>
                         <InputNumber
                           style={{ width: "100%" }}
@@ -505,12 +516,8 @@ export default function AddTradeForm({
               </Button>
               <Button type="primary" htmlType="submit" loading={loading}>
                 {loading
-                  ? mode === "edit"
-                    ? "Updating Trade..."
-                    : "Adding Trade..."
-                  : mode === "edit"
-                  ? "Update Trade"
-                  : "Add Trade"}
+                  ? `${mode === "edit" ? "Updating" : "Adding"} Trade...`
+                  : getSubmitButtonText()}
               </Button>
             </Space>
           </Form.Item>
