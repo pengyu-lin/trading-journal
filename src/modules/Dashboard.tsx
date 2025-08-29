@@ -1,13 +1,26 @@
-import { useEffect } from "react";
-import { Row, Col } from "antd";
+import { useEffect, useState } from "react";
+import { Row, Col, Alert } from "antd";
 import TotalPnl from "../components/dashboard/TotalPnl";
 import TradeWinPercent from "../components/dashboard/TradeWinPercent";
 import ProfitFactor from "../components/dashboard/ProfitFactor";
+import AccountBalance from "../components/dashboard/AccountBalance";
 import PnLCalendar from "../components/dashboard/PnLCalendar";
 import { useDashboardActions } from "../stores/dashboardStore";
 
 export default function Dashboard() {
   const { fetchTrades } = useDashboardActions();
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Check if device is mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   // Fetch trades when component mounts
   useEffect(() => {
@@ -15,21 +28,39 @@ export default function Dashboard() {
   }, [fetchTrades]);
 
   return (
-    <div style={{ padding: 20 }}>
+    <div style={{ padding: isMobile ? 12 : 20 }}>
       <Row gutter={[16, 16]}>
-        <Col span={6}>
+        {/* Mobile: Full width, Desktop: 6 columns each */}
+        <Col xs={24} sm={24} md={12} xl={6}>
+          <AccountBalance />
+        </Col>
+        <Col xs={24} sm={24} md={12} xl={6}>
           <TotalPnl />
         </Col>
-        <Col span={6}>
+        <Col xs={24} sm={24} md={12} xl={6}>
           <TradeWinPercent />
         </Col>
-        <Col span={6}>
+        <Col xs={24} sm={24} md={12} xl={6}>
           <ProfitFactor />
         </Col>
       </Row>
-      <div style={{ paddingTop: 20 }}>
-        <PnLCalendar />
-      </div>
+
+      {/* Show mobile message and hide calendar on mobile devices */}
+      {isMobile ? (
+        <div style={{ paddingTop: 20 }}>
+          <Alert
+            message="Calendar View"
+            description="The PnL calendar is hidden on mobile devices for better usability. Please use a larger screen to view the detailed calendar."
+            type="info"
+            showIcon
+            style={{ marginBottom: 16 }}
+          />
+        </div>
+      ) : (
+        <div style={{ paddingTop: 20 }}>
+          <PnLCalendar />
+        </div>
+      )}
     </div>
   );
 }

@@ -39,8 +39,7 @@ export default function TotalPnl() {
         value={totalPnl}
         precision={2}
         valueStyle={{ color: totalPnl >= 0 ? "green" : "red" }}
-        prefix={totalPnl >= 0 ? "+" : ""}
-        suffix="USD"
+        prefix={totalPnl >= 0 ? "+$" : "$"}
       />
     </Card>
   );

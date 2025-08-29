@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
-import { Table, Tag, Space, Button, Spin, message } from "antd";
-import { EditOutlined, DeleteOutlined, StarFilled } from "@ant-design/icons";
+import { Table, Tag, Space, Button, Spin, message, Card, Empty } from "antd";
+import {
+  EditOutlined,
+  DeleteOutlined,
+  StarFilled,
+  UserOutlined,
+} from "@ant-design/icons";
 import DeleteConfirmationModal from "../common/DeleteConfirmationModal";
 import type { TradingAccount, AccountTransaction } from "../../types/trade";
 import {
@@ -38,6 +43,7 @@ export default function AccountsTable({ refreshKey }: AccountsTableProps) {
   const [selectedAccount, setSelectedAccount] = useState<TradingAccount | null>(
     null
   );
+  const [isMobile, setIsMobile] = useState(false);
   const { refreshAccounts } = useAccountSelectorActions();
   const { user } = useAuthStore();
 
@@ -145,6 +151,17 @@ export default function AccountsTable({ refreshKey }: AccountsTableProps) {
     setAccountTransactions([]);
   };
 
+  // Check if device is mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
   useEffect(() => {
     fetchAccounts();
   }, [refreshKey]);
@@ -217,17 +234,118 @@ export default function AccountsTable({ refreshKey }: AccountsTableProps) {
     );
   }
 
+  // Show empty state for mobile when no accounts
+  if (isMobile && accounts.length === 0) {
+    return (
+      <Card style={{ textAlign: "center", padding: "40px 20px" }}>
+        <Empty
+          image={<UserOutlined style={{ fontSize: 64, color: "#d9d9d9" }} />}
+          description={
+            <div>
+              <div style={{ fontSize: "16px", marginBottom: "8px" }}>
+                No trading accounts yet
+              </div>
+              <div
+                style={{
+                  fontSize: "14px",
+                  color: "#666",
+                  marginBottom: "24px",
+                }}>
+                Create your first trading account to start tracking your
+                portfolio
+              </div>
+            </div>
+          }
+        />
+      </Card>
+    );
+  }
+
   return (
     <>
-      <Table
-        dataSource={accounts}
-        columns={columns}
-        pagination={{ pageSize: 10 }}
-        rowKey="id"
-        locale={{
-          emptyText: "No accounts found. Create your first account above!",
-        }}
-      />
+      {isMobile ? (
+        // Mobile Card Layout
+        <div style={{ display: "grid", gap: "16px", padding: "0 8px" }}>
+          {accounts.map((account) => (
+            <Card
+              key={account.id}
+              size="small"
+              style={{
+                border: "1px solid #f0f0f0",
+                borderRadius: "8px",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+              }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: "12px",
+                }}>
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  {account.isPrimary && (
+                    <StarFilled
+                      style={{ color: "#faad14", fontSize: "16px" }}
+                    />
+                  )}
+                  <span style={{ fontWeight: "600", fontSize: "16px" }}>
+                    {account.name}
+                  </span>
+                </div>
+                <Tag color={account.isActive ? "green" : "red"}>
+                  {account.isActive ? "Active" : "Inactive"}
+                </Tag>
+              </div>
+
+              <div
+                style={{
+                  marginBottom: "12px",
+                  fontSize: "14px",
+                  color: "#666",
+                }}>
+                <div>
+                  Created:{" "}
+                  {dayjs(account.createdAt.toDate()).format("MMM DD, YYYY")}
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: "8px" }}>
+                <Button
+                  type="text"
+                  icon={<EditOutlined />}
+                  size="small"
+                  onClick={() => handleEdit(account)}
+                  style={{ flex: 1 }}>
+                  Edit
+                </Button>
+                <Button
+                  type="text"
+                  icon={<DeleteOutlined />}
+                  size="small"
+                  danger
+                  loading={deletingAccountId === account.id}
+                  disabled={deletingAccountId !== null}
+                  onClick={() => handleDelete(account)}
+                  style={{ flex: 1 }}>
+                  Delete
+                </Button>
+              </div>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        // Desktop Table Layout
+        <Table
+          dataSource={accounts}
+          columns={columns}
+          pagination={{ pageSize: 10 }}
+          rowKey="id"
+          locale={{
+            emptyText: "No accounts found. Create your first account above!",
+          }}
+        />
+      )}
 
       <AddAccountForm
         visible={editModalVisible}

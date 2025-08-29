@@ -13,6 +13,7 @@ import {
   message,
   Upload,
   Image,
+  Card,
 } from "antd";
 import {
   PlusOutlined,
@@ -21,7 +22,7 @@ import {
   DeleteOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
-import type { Trade, TradeAction } from "../../types/trade";
+import type { Trade, TradeAction, TradeFormData } from "../../types/trade";
 import { createTrade, updateTrade } from "../../services/tradesService";
 import { useSelectedAccount } from "../../stores/accountSelectorStore";
 
@@ -30,12 +31,13 @@ const { Option } = Select;
 interface AddTradeFormProps {
   visible: boolean;
   onCancel: () => void;
-  onSubmit: (values: Record<string, unknown>) => Promise<void>;
-  mode: "create" | "edit";
+  onSubmit: (values: TradeFormData) => Promise<void>;
+  mode: "add" | "edit";
   editData?: {
     trade: Trade;
     actions: TradeAction[];
   };
+  loading?: boolean;
 }
 
 export default function AddTradeForm({
@@ -44,11 +46,23 @@ export default function AddTradeForm({
   onSubmit,
   mode,
   editData,
+  loading = false,
 }: AddTradeFormProps) {
   const [form] = Form.useForm();
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const selectedAccount = useSelectedAccount();
+
+  // Check if device is mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   // Load selected account when component mounts
   useEffect(() => {
@@ -88,15 +102,13 @@ export default function AddTradeForm({
     }
   }, [visible, mode, editData, form, selectedAccount?.id]);
 
-  const handleSubmit = async (values: Record<string, unknown>) => {
+  const handleSubmit = async (values: TradeFormData) => {
     try {
-      setLoading(true);
-
       // Set the selected account ID and userId if not already set
-      if (!values.accountId && selectedAccount) {
+      if (!values.accountId && selectedAccount?.id) {
         values.accountId = selectedAccount.id;
       }
-      if (!values.userId && selectedAccount) {
+      if (!values.userId && selectedAccount?.userId) {
         values.userId = selectedAccount.userId;
       }
 
@@ -107,11 +119,11 @@ export default function AddTradeForm({
 
       if (mode === "edit" && editData) {
         // Update existing trade
-        await updateTrade(editData.trade.id!, values as any);
+        await updateTrade(editData.trade.id!, values);
         // Success message handled by parent component
       } else {
         // Create new trade
-        await createTrade(values as any);
+        await createTrade(values);
         // Success message handled by parent component
       }
 
@@ -126,14 +138,20 @@ export default function AddTradeForm({
       const action = mode === "edit" ? "updating" : "adding";
       message.error(`Failed to ${action} trade. Please try again.`);
       throw error; // Re-throw to let the form handle the error
-    } finally {
-      setLoading(false);
     }
   };
 
   const handleCancel = () => {
     form.resetFields();
     onCancel();
+  };
+
+  const getModalTitle = () => {
+    return mode === "edit" ? "Edit Trade" : "Add New Trade";
+  };
+
+  const getSubmitButtonText = () => {
+    return mode === "edit" ? "Update Trade" : "Add Trade";
   };
 
   const onChange = () => {
@@ -167,11 +185,11 @@ export default function AddTradeForm({
         `}
       </style>
       <Modal
-        title={mode === "edit" ? "Edit Trade" : "Add New Trade"}
+        title={getModalTitle()}
         open={visible}
         onCancel={handleCancel}
         footer={null}
-        width={800}>
+        width={isMobile ? "95%" : 800}>
         <Form
           form={form}
           layout="vertical"
@@ -191,7 +209,7 @@ export default function AddTradeForm({
           }}>
           {/* First row: Symbol, Tick Size, Tick Value */}
           <Row gutter={16}>
-            <Col span={8}>
+            <Col span={isMobile ? 24 : 8}>
               <Form.Item
                 name="symbol"
                 label="Symbol"
@@ -202,11 +220,12 @@ export default function AddTradeForm({
                     max: 10,
                     message: "Symbol must be between 1 and 10 characters",
                   },
-                ]}>
+                ]}
+                validateTrigger={["onBlur", "onChange"]}>
                 <Input placeholder="e.g., AAPL" />
               </Form.Item>
             </Col>
-            <Col span={8}>
+            <Col span={isMobile ? 24 : 8}>
               <Form.Item
                 name="tickSize"
                 label="Tick Size"
@@ -217,15 +236,16 @@ export default function AddTradeForm({
                     min: 0.0001,
                     message: "Tick size must be greater than 0",
                   },
-                ]}>
+                ]}
+                validateTrigger={["onBlur", "onChange"]}>
                 <InputNumber
                   style={{ width: "100%" }}
                   placeholder="e.g., 0.01"
-                  precision={4}
+                  precision={2}
                 />
               </Form.Item>
             </Col>
-            <Col span={8}>
+            <Col span={isMobile ? 24 : 8}>
               <Form.Item
                 name="tickValue"
                 label="Tick Value"
@@ -236,7 +256,8 @@ export default function AddTradeForm({
                     min: 0.01,
                     message: "Tick value must be greater than 0",
                   },
-                ]}>
+                ]}
+                validateTrigger={["onBlur", "onChange"]}>
                 <InputNumber
                   style={{ width: "100%" }}
                   placeholder="e.g., 0.01"
@@ -250,158 +271,294 @@ export default function AddTradeForm({
           <Form.List name="actions">
             {(fields, { add, remove }) => (
               <>
-                {/* Table Headers */}
-                <Row gutter={16} style={{ fontWeight: "bold" }}>
-                  <Col span={4}>
-                    <div style={{ padding: "8px 0 0 0", color: "#666" }}>
-                      Action
-                    </div>
-                  </Col>
-                  <Col span={7}>
-                    <div style={{ padding: "8px 0 0 0", color: "#666" }}>
-                      Date/Time
-                    </div>
-                  </Col>
-                  <Col span={3}>
-                    <div style={{ padding: "8px 0 0 0", color: "#666" }}>
-                      Qty
-                    </div>
-                  </Col>
-                  <Col span={4}>
-                    <div style={{ padding: "8px 0 0 0", color: "#666" }}>
-                      Price
-                    </div>
-                  </Col>
-                  <Col span={3}>
-                    <div style={{ padding: "8px 0 0 0", color: "#666" }}>
-                      Fee
-                    </div>
-                  </Col>
-                  <Col span={2}>
-                    <div style={{ padding: "8px 0 0 0", color: "#666" }}></div>
-                  </Col>
-                </Row>
-
-                {/* Table Rows */}
-                {fields.map(({ key, name, ...restField }) => (
-                  <Row
-                    key={key}
-                    gutter={16}
-                    align="middle"
-                    style={{ padding: "12px 0" }}>
+                {/* Table Headers - Only show on desktop */}
+                {!isMobile && (
+                  <Row gutter={16} style={{ fontWeight: "bold" }}>
                     <Col span={4}>
-                      <Form.Item
-                        {...restField}
-                        name={[name, "action"]}
-                        rules={[
-                          { required: true, message: "Action is required" },
-                        ]}
-                        style={{ marginBottom: 0 }}>
-                        <Select placeholder="Select action">
-                          <Option value="buy">Buy</Option>
-                          <Option value="sell">Sell</Option>
-                        </Select>
-                      </Form.Item>
+                      <div style={{ padding: "8px 0 0 0", color: "#666" }}>
+                        Action
+                      </div>
                     </Col>
                     <Col span={7}>
-                      <Form.Item
-                        {...restField}
-                        name={[name, "date"]}
-                        rules={[
-                          { required: true, message: "Date is required" },
-                        ]}
-                        style={{ marginBottom: 0 }}>
-                        <DatePicker
-                          onChange={onChange}
-                          showTime={{
-                            format: "HH:mm",
-                          }}
-                          format="YYYY-MM-DD HH:mm"
-                          style={{ width: "100%" }}
-                          placeholder="Select date"
-                        />
-                      </Form.Item>
+                      <div style={{ padding: "8px 0 0 0", color: "#666" }}>
+                        Date/Time
+                      </div>
                     </Col>
                     <Col span={3}>
-                      <Form.Item
-                        {...restField}
-                        name={[name, "qty"]}
-                        rules={[
-                          { required: true, message: "Quantity is required" },
-                          {
-                            type: "number",
-                            min: 1,
-                            message: "Quantity must be greater than 0",
-                          },
-                        ]}
-                        style={{ marginBottom: 0 }}>
-                        <InputNumber
-                          style={{ width: "100%" }}
-                          placeholder="Qty"
-                          min={1}
-                        />
-                      </Form.Item>
+                      <div style={{ padding: "8px 0 0 0", color: "#666" }}>
+                        Qty
+                      </div>
                     </Col>
                     <Col span={4}>
-                      <Form.Item
-                        {...restField}
-                        name={[name, "price"]}
-                        rules={[
-                          { required: true, message: "Price is required" },
-                          {
-                            type: "number",
-                            min: 0.01,
-                            message: "Price must be greater than 0",
-                          },
-                        ]}
-                        style={{ marginBottom: 0 }}>
-                        <InputNumber
-                          style={{ width: "100%" }}
-                          precision={2}
-                          placeholder="Price"
-                          min={0.01}
-                        />
-                      </Form.Item>
+                      <div style={{ padding: "8px 0 0 0", color: "#666" }}>
+                        Price
+                      </div>
                     </Col>
                     <Col span={3}>
-                      <Form.Item
-                        {...restField}
-                        name={[name, "fee"]}
-                        rules={[
-                          {
-                            type: "number",
-                            min: 0,
-                            message: "Fee must be greater than or equal to 0",
-                          },
-                        ]}
-                        style={{ marginBottom: 0 }}>
-                        <InputNumber
-                          style={{ width: "100%" }}
-                          placeholder="Fee"
-                          min={0}
-                        />
-                      </Form.Item>
+                      <div style={{ padding: "8px 0 0 0", color: "#666" }}>
+                        Fee
+                      </div>
                     </Col>
                     <Col span={2}>
-                      {fields.length > 1 && (
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            height: "100%",
-                          }}>
-                          <MinusCircleOutlined
-                            onClick={() => remove(name)}
-                            style={{
-                              color: "#ff4d4f",
-                              fontSize: "18px",
-                              cursor: "pointer",
-                            }}
-                          />
-                        </div>
-                      )}
+                      <div
+                        style={{ padding: "8px 0 0 0", color: "#666" }}></div>
                     </Col>
                   </Row>
+                )}
+
+                {/* Action Rows */}
+                {fields.map(({ key, name, ...restField }) => (
+                  <div
+                    key={key}
+                    style={{ marginBottom: isMobile ? "16px" : "0" }}>
+                    {isMobile ? (
+                      // Mobile Card Layout
+                      <Card
+                        size="small"
+                        style={{
+                          border: "1px solid #f0f0f0",
+                          borderRadius: "8px",
+                          marginBottom: "8px",
+                        }}>
+                        <Row gutter={16}>
+                          <Col span={8}>
+                            <Form.Item
+                              {...restField}
+                              name={[name, "action"]}
+                              label="Action"
+                              rules={[
+                                {
+                                  required: true,
+                                  message: "Action is required",
+                                },
+                              ]}>
+                              <Select placeholder="Select action">
+                                <Option value="buy">Buy</Option>
+                                <Option value="sell">Sell</Option>
+                              </Select>
+                            </Form.Item>
+                          </Col>
+                          <Col span={16}>
+                            <Form.Item
+                              {...restField}
+                              name={[name, "date"]}
+                              label="Date/Time"
+                              rules={[
+                                { required: true, message: "Date is required" },
+                              ]}>
+                              <DatePicker
+                                onChange={onChange}
+                                showTime={{
+                                  format: "HH:mm",
+                                }}
+                                format="YYYY-MM-DD HH:mm"
+                                style={{ width: "100%" }}
+                                placeholder="Select date"
+                              />
+                            </Form.Item>
+                          </Col>
+                          <Col span={6}>
+                            <Form.Item
+                              {...restField}
+                              name={[name, "qty"]}
+                              label="Quantity"
+                              rules={[
+                                {
+                                  required: true,
+                                  message: "Quantity is required",
+                                },
+                                {
+                                  type: "number",
+                                  min: 1,
+                                  message: "Quantity must be greater than 0",
+                                },
+                              ]}
+                              validateTrigger={["onBlur", "onChange"]}>
+                              <InputNumber
+                                style={{ width: "100%" }}
+                                placeholder="Qty"
+                                min={1}
+                              />
+                            </Form.Item>
+                          </Col>
+                          <Col span={9}>
+                            <Form.Item
+                              {...restField}
+                              name={[name, "price"]}
+                              label="Price"
+                              rules={[
+                                {
+                                  required: true,
+                                  message: "Price is required",
+                                },
+                                {
+                                  type: "number",
+                                  min: 0.01,
+                                  message: "Price must be greater than 0",
+                                },
+                              ]}
+                              validateTrigger={["onBlur", "onChange"]}>
+                              <InputNumber
+                                style={{ width: "100%" }}
+                                precision={2}
+                                placeholder="Price"
+                                min={0.01}
+                              />
+                            </Form.Item>
+                          </Col>
+                          <Col span={9}>
+                            <Form.Item
+                              {...restField}
+                              name={[name, "fee"]}
+                              label="Fee">
+                              <InputNumber
+                                style={{ width: "100%" }}
+                                placeholder="Fee"
+                                min={0}
+                              />
+                            </Form.Item>
+                          </Col>
+                          <Col span={24} style={{ textAlign: "center" }}>
+                            {fields.length > 1 && (
+                              <Button
+                                type="text"
+                                danger
+                                icon={<MinusCircleOutlined />}
+                                onClick={() => remove(name)}
+                                size="small">
+                                Remove Action
+                              </Button>
+                            )}
+                          </Col>
+                        </Row>
+                      </Card>
+                    ) : (
+                      // Desktop Table Layout
+                      <Row
+                        gutter={16}
+                        align="middle"
+                        style={{ padding: "12px 0" }}>
+                        <Col span={4}>
+                          <Form.Item
+                            {...restField}
+                            name={[name, "action"]}
+                            rules={[
+                              { required: true, message: "Action is required" },
+                            ]}
+                            style={{ marginBottom: 0 }}>
+                            <Select placeholder="Select action">
+                              <Option value="buy">Buy</Option>
+                              <Option value="sell">Sell</Option>
+                            </Select>
+                          </Form.Item>
+                        </Col>
+                        <Col span={7}>
+                          <Form.Item
+                            {...restField}
+                            name={[name, "date"]}
+                            rules={[
+                              { required: true, message: "Date is required" },
+                            ]}
+                            style={{ marginBottom: 0 }}>
+                            <DatePicker
+                              onChange={onChange}
+                              showTime={{
+                                format: "HH:mm",
+                              }}
+                              format="YYYY-MM-DD HH:mm"
+                              style={{ width: "100%" }}
+                              placeholder="Select date"
+                            />
+                          </Form.Item>
+                        </Col>
+                        <Col span={3}>
+                          <Form.Item
+                            {...restField}
+                            name={[name, "qty"]}
+                            rules={[
+                              {
+                                required: true,
+                                message: "Quantity is required",
+                              },
+                              {
+                                type: "number",
+                                min: 1,
+                                message: "Quantity must be greater than 0",
+                              },
+                            ]}
+                            validateTrigger={["onBlur", "onChange"]}
+                            style={{ marginBottom: 0 }}>
+                            <InputNumber
+                              style={{ width: "100%" }}
+                              placeholder="Qty"
+                              min={1}
+                            />
+                          </Form.Item>
+                        </Col>
+                        <Col span={4}>
+                          <Form.Item
+                            {...restField}
+                            name={[name, "price"]}
+                            rules={[
+                              { required: true, message: "Price is required" },
+                              {
+                                type: "number",
+                                min: 0.01,
+                                message: "Price must be greater than 0",
+                              },
+                            ]}
+                            validateTrigger={["onBlur", "onChange"]}
+                            style={{ marginBottom: 0 }}>
+                            <InputNumber
+                              style={{ width: "100%" }}
+                              precision={2}
+                              placeholder="Price"
+                              min={0.01}
+                            />
+                          </Form.Item>
+                        </Col>
+                        <Col span={3}>
+                          <Form.Item
+                            {...restField}
+                            name={[name, "fee"]}
+                            rules={[
+                              {
+                                type: "number",
+                                min: 0,
+                                message:
+                                  "Fee must be greater than or equal to 0",
+                              },
+                            ]}
+                            validateTrigger={["onBlur", "onChange"]}
+                            style={{ marginBottom: 0 }}>
+                            <InputNumber
+                              style={{ width: "100%" }}
+                              placeholder="Fee"
+                              min={0}
+                            />
+                          </Form.Item>
+                        </Col>
+                        <Col span={2}>
+                          {fields.length > 1 && (
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                height: "100%",
+                              }}>
+                              <MinusCircleOutlined
+                                onClick={() => remove(name)}
+                                style={{
+                                  color: "#ff4d4f",
+                                  cursor: "pointer",
+                                }}
+                              />
+                            </div>
+                          )}
+                        </Col>
+                      </Row>
+                    )}
+                  </div>
                 ))}
 
                 <Form.Item
@@ -422,7 +579,7 @@ export default function AddTradeForm({
                       })
                     }
                     icon={<PlusOutlined />}
-                    style={{ margin: "12px 0" }}>
+                    style={{ margin: "12px 0 32px 0" }}>
                     Add Action
                   </Button>
                 </Form.Item>
@@ -498,19 +655,16 @@ export default function AddTradeForm({
           </Form.Item>
 
           {/* Form buttons */}
-          <Form.Item style={{ marginBottom: 0, textAlign: "right" }}>
+          <Form.Item
+            style={{ marginBottom: 0, textAlign: "right", marginTop: "16px" }}>
             <Space>
               <Button onClick={handleCancel} disabled={loading}>
                 Cancel
               </Button>
               <Button type="primary" htmlType="submit" loading={loading}>
                 {loading
-                  ? mode === "edit"
-                    ? "Updating Trade..."
-                    : "Adding Trade..."
-                  : mode === "edit"
-                  ? "Update Trade"
-                  : "Add Trade"}
+                  ? `${mode === "edit" ? "Updating" : "Adding"} Trade...`
+                  : getSubmitButtonText()}
               </Button>
             </Space>
           </Form.Item>
