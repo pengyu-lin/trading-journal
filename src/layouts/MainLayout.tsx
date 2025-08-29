@@ -9,21 +9,18 @@ import {
   LogoutOutlined,
   UserOutlined as AccountIcon,
   StarFilled,
-  SettingOutlined,
 } from "@ant-design/icons";
 import {
   Button,
   Layout,
   Menu,
   theme,
-  Space,
   Typography,
   Select,
   Tooltip,
   Drawer,
   Avatar,
   Dropdown,
-  Divider,
 } from "antd";
 import { useAuthStore } from "../stores/authStore";
 import { signOutUser } from "../services/authService";
