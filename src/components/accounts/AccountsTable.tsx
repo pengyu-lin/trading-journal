@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
-import { Table, Tag, Space, Button, Spin, message, Card } from "antd";
-import { EditOutlined, DeleteOutlined, StarFilled } from "@ant-design/icons";
+import { Table, Tag, Space, Button, Spin, message, Card, Empty } from "antd";
+import {
+  EditOutlined,
+  DeleteOutlined,
+  StarFilled,
+  UserOutlined,
+} from "@ant-design/icons";
 import DeleteConfirmationModal from "../common/DeleteConfirmationModal";
 import type { TradingAccount, AccountTransaction } from "../../types/trade";
 import {
@@ -226,6 +231,33 @@ export default function AccountsTable({ refreshKey }: AccountsTableProps) {
         <Spin size="large" />
         <div style={{ marginTop: 16 }}>Loading accounts...</div>
       </div>
+    );
+  }
+
+  // Show empty state for mobile when no accounts
+  if (isMobile && accounts.length === 0) {
+    return (
+      <Card style={{ textAlign: "center", padding: "40px 20px" }}>
+        <Empty
+          image={<UserOutlined style={{ fontSize: 64, color: "#d9d9d9" }} />}
+          description={
+            <div>
+              <div style={{ fontSize: "16px", marginBottom: "8px" }}>
+                No trading accounts yet
+              </div>
+              <div
+                style={{
+                  fontSize: "14px",
+                  color: "#666",
+                  marginBottom: "24px",
+                }}>
+                Create your first trading account to start tracking your
+                portfolio
+              </div>
+            </div>
+          }
+        />
+      </Card>
     );
   }
 

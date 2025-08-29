@@ -5,6 +5,8 @@ import JournalTable from "../components/journal/JournalTable";
 import AddTradeForm from "../components/journal/AddTradeForm";
 import { useAccountSelectorActions } from "../stores/accountSelectorStore";
 import { useAuthStore } from "../stores/authStore";
+import { useAccounts } from "../stores/accountSelectorStore";
+import { useNavigate } from "react-router-dom";
 
 export default function Journal() {
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -12,8 +14,40 @@ export default function Journal() {
   const [refreshKey, setRefreshKey] = useState(0);
   const { refreshAccounts } = useAccountSelectorActions();
   const { user } = useAuthStore();
+  const accounts = useAccounts();
+  const navigate = useNavigate();
 
   const showModal = () => {
+    // Check if there are any accounts
+    if (accounts.length === 0) {
+      message.warning({
+        content: (
+          <div
+            onClick={() => {
+              message.destroy("no-accounts-warning"); // Close the popup
+            }}
+            style={{ cursor: "pointer" }}>
+            <p>No trading accounts found!</p>
+            <p>Please create a trading account first before adding trades.</p>
+            <Button
+              type="link"
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation(); // Prevent the div click from firing
+                message.destroy("no-accounts-warning"); // Close the popup
+                navigate("/accounts"); // Navigate to accounts page
+              }}
+              style={{ padding: 0, height: "auto" }}>
+              Go to Accounts →
+            </Button>
+          </div>
+        ),
+        duration: 5, // Auto-close after 5 seconds
+        key: "no-accounts-warning",
+      });
+      return;
+    }
+
     setIsModalVisible(true);
   };
 

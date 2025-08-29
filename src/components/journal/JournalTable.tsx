@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { Table, Tag, Button, message, Space, Card } from "antd";
-import { DeleteOutlined, EditOutlined } from "@ant-design/icons";
+import { Table, Tag, Button, message, Space, Card, Empty } from "antd";
+import { DeleteOutlined, EditOutlined, BookOutlined } from "@ant-design/icons";
 import type { Trade, TradeAction } from "../../types/trade";
 import type { Key } from "react";
 import DeleteConfirmationModal from "../common/DeleteConfirmationModal";
@@ -46,6 +46,7 @@ export default function JournalTable({ refreshKey }: JournalTableProps) {
     try {
       if (!selectedAccount?.id || !user?.uid) {
         setTrades([]);
+        setLoading(false);
         return;
       }
 
@@ -58,6 +59,7 @@ export default function JournalTable({ refreshKey }: JournalTableProps) {
     } catch (error) {
       console.error("Error fetching trades:", error);
       message.error("Failed to fetch trades");
+      setTrades([]);
     } finally {
       setLoading(false);
     }
@@ -66,6 +68,10 @@ export default function JournalTable({ refreshKey }: JournalTableProps) {
   useEffect(() => {
     if (selectedAccount?.id) {
       fetchTrades();
+    } else {
+      // If no account is selected, set loading to false and clear trades
+      setLoading(false);
+      setTrades([]);
     }
   }, [refreshKey, selectedAccount?.id]);
 
@@ -255,6 +261,33 @@ export default function JournalTable({ refreshKey }: JournalTableProps) {
     );
   }
 
+  // Show empty state for mobile when no trades
+  if (isMobile && trades.length === 0) {
+    return (
+      <Card style={{ textAlign: "center", padding: "40px 20px" }}>
+        <Empty
+          image={<BookOutlined style={{ fontSize: 64, color: "#d9d9d9" }} />}
+          description={
+            <div>
+              <div style={{ fontSize: "16px", marginBottom: "8px" }}>
+                No trades recorded yet
+              </div>
+              <div
+                style={{
+                  fontSize: "14px",
+                  color: "#666",
+                  marginBottom: "24px",
+                }}>
+                Start tracking your trading performance by adding your first
+                trade
+              </div>
+            </div>
+          }
+        />
+      </Card>
+    );
+  }
+
   return (
     <>
       {isMobile ? (
@@ -362,6 +395,9 @@ export default function JournalTable({ refreshKey }: JournalTableProps) {
           pagination={{ pageSize: 10 }}
           rowKey="id"
           loading={loading}
+          locale={{
+            emptyText: "No trades found. Add your first trade to get started!",
+          }}
         />
       )}
 

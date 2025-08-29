@@ -75,7 +75,7 @@ export default function AccountBalance() {
         title="Account Balance"
         value={totalBalance}
         precision={2}
-        suffix="USD"
+        prefix="$"
       />
     </Card>
   );

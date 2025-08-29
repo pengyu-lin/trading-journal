@@ -31,16 +31,16 @@ export default function Dashboard() {
     <div style={{ padding: isMobile ? 12 : 20 }}>
       <Row gutter={[16, 16]}>
         {/* Mobile: Full width, Desktop: 6 columns each */}
-        <Col xs={24} sm={24} md={12} lg={6} xl={6}>
+        <Col xs={24} sm={24} md={12} xl={6}>
           <AccountBalance />
         </Col>
-        <Col xs={24} sm={24} md={12} lg={6} xl={6}>
+        <Col xs={24} sm={24} md={12} xl={6}>
           <TotalPnl />
         </Col>
-        <Col xs={24} sm={24} md={12} lg={6} xl={6}>
+        <Col xs={24} sm={24} md={12} xl={6}>
           <TradeWinPercent />
         </Col>
-        <Col xs={24} sm={24} md={12} lg={6} xl={6}>
+        <Col xs={24} sm={24} md={12} xl={6}>
           <ProfitFactor />
         </Col>
       </Row>

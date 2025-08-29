@@ -1,7 +1,8 @@
 import { create } from "zustand";
 import { useShallow } from "zustand/react/shallow";
+import { getAccounts, getPrimaryAccount } from "../services/accountsService";
 import type { TradingAccount } from "../types/trade";
-import { getPrimaryAccount, getAccounts } from "../services/accountsService";
+import { message } from "antd";
 
 interface AccountSelectorState {
   // Available accounts
@@ -95,6 +96,9 @@ export const useAccountSelectorStore = create<AccountSelectorState>(
         // Save to localStorage
         const localStorageKey = getLocalStorageKey(userId);
         localStorage.setItem(localStorageKey, accountId);
+
+        // Show success message
+        message.success(`Switched to ${account.name}`);
       }
     },
 

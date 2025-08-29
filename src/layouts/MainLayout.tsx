@@ -9,6 +9,7 @@ import {
   LogoutOutlined,
   UserOutlined as AccountIcon,
   StarFilled,
+  SettingOutlined,
 } from "@ant-design/icons";
 import {
   Button,
@@ -20,6 +21,9 @@ import {
   Select,
   Tooltip,
   Drawer,
+  Avatar,
+  Dropdown,
+  Divider,
 } from "antd";
 import { useAuthStore } from "../stores/authStore";
 import { signOutUser } from "../services/authService";
@@ -40,6 +44,7 @@ const MainLayout: React.FC<Props> = ({ children }) => {
   const [collapsed, setCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const [avatarDropdownOpen, setAvatarDropdownOpen] = useState(false);
   const { token } = theme.useToken();
   const location = useLocation();
   const navigate = useNavigate();
@@ -77,7 +82,7 @@ const MainLayout: React.FC<Props> = ({ children }) => {
     try {
       // Clear selected account from localStorage and state
       if (user?.uid) {
-        const localStorageKey = `selectedAccount_${user.uid}`;
+        const localStorageKey = `selectedAccount_${user?.uid}`;
         localStorage.removeItem(localStorageKey);
       }
 
@@ -113,6 +118,106 @@ const MainLayout: React.FC<Props> = ({ children }) => {
       key: "/accounts",
       icon: <UserOutlined />,
       label: "Accounts",
+    },
+  ];
+
+  // Create dropdown menu items
+  const dropdownMenuItems = [
+    // User info section
+    {
+      key: "user-info",
+      label: (
+        <div style={{ padding: "8px 0" }}>
+          <div style={{ fontWeight: "600", fontSize: "14px" }}>
+            {user?.email}
+          </div>
+          <div style={{ fontSize: "12px", color: "#666" }}>
+            Trading Journal User
+          </div>
+        </div>
+      ),
+      disabled: true,
+    },
+    {
+      type: "divider" as const,
+    },
+    // Account selector (only show in dropdown on mobile)
+    ...(isMobile
+      ? [
+          {
+            key: "account-selector",
+            label: (
+              <div
+                style={{ padding: "8px 0" }}
+                onClick={(e) => e.stopPropagation()}>
+                <div
+                  style={{
+                    fontSize: "12px",
+                    color: "#666",
+                    marginBottom: "8px",
+                  }}>
+                  Trading Account
+                </div>
+                <Select
+                  style={{ width: "100%" }}
+                  placeholder={
+                    accounts.length === 0
+                      ? "No accounts found"
+                      : "Select Account"
+                  }
+                  value={selectedAccount?.id}
+                  onChange={(accountId) =>
+                    selectAccount(accountId, user?.uid || "")
+                  }
+                  disabled={accounts.length === 0}
+                  onClick={(e) => e.stopPropagation()}
+                  styles={{ popup: { root: { zIndex: 9999 } } }}
+                  options={accounts.map((account) => ({
+                    label: (
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                        }}>
+                        <AccountIcon />
+                        <Typography.Text
+                          ellipsis
+                          style={{
+                            maxWidth: "120px",
+                            flex: 1,
+                            display: "flex",
+                            alignItems: "center",
+                          }}
+                          title={account.name}>
+                          {account.name}
+                        </Typography.Text>
+                        {account.isPrimary && (
+                          <StarFilled
+                            style={{ color: "#faad14", fontSize: "14px" }}
+                          />
+                        )}
+                      </div>
+                    ),
+                    value: account.id,
+                  }))}
+                  loading={isLoading && accounts.length === 0}
+                />
+              </div>
+            ),
+          },
+          {
+            type: "divider" as const,
+          },
+        ]
+      : []),
+    // Logout option
+    {
+      key: "logout",
+      icon: <LogoutOutlined />,
+      label: "Logout",
+      onClick: handleLogout,
+      style: { color: "#ff4d4f" },
     },
   ];
 
@@ -259,62 +364,85 @@ const MainLayout: React.FC<Props> = ({ children }) => {
             style={{ fontSize: "16px", width: 64, height: 64 }}
           />
 
-          <Space>
-            {/* Account Selector */}
-            <Tooltip title="Select Trading Account">
-              <Select
-                style={{ width: 200 }}
-                placeholder={
-                  accounts.length === 0 ? "No accounts found" : "Select Account"
-                }
-                value={selectedAccount?.id}
-                onChange={(accountId) =>
-                  selectAccount(accountId, user?.uid || "")
-                }
-                disabled={accounts.length === 0}
-                options={accounts.map((account) => ({
-                  label: (
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
-                      }}>
-                      <AccountIcon />
-                      <Typography.Text
-                        ellipsis
+          {/* Account Selector - Only show outside dropdown on non-mobile */}
+          {!isMobile && (
+            <div
+              style={{
+                flex: 1,
+                display: "flex",
+                justifyContent: "flex-end",
+                marginRight: 16,
+              }}>
+              <Tooltip title="Select Trading Account">
+                <Select
+                  style={{ width: 200 }}
+                  placeholder={
+                    accounts.length === 0
+                      ? "No accounts found"
+                      : "Select Account"
+                  }
+                  value={selectedAccount?.id}
+                  onChange={(accountId) =>
+                    selectAccount(accountId, user?.uid || "")
+                  }
+                  disabled={accounts.length === 0}
+                  styles={{ popup: { root: { zIndex: 9999 } } }}
+                  getPopupContainer={(triggerNode) =>
+                    triggerNode.parentNode || document.body
+                  }
+                  options={accounts.map((account) => ({
+                    label: (
+                      <div
                         style={{
-                          maxWidth: "120px",
-                          flex: 1,
                           display: "flex",
                           alignItems: "center",
-                        }}
-                        title={account.name}>
-                        {account.name}
-                      </Typography.Text>
-                      {account.isPrimary && (
-                        <StarFilled
-                          style={{ color: "#faad14", fontSize: "14px" }}
-                        />
-                      )}
-                    </div>
-                  ),
-                  value: account.id,
-                }))}
-                loading={isLoading && accounts.length === 0}
-              />
-            </Tooltip>
+                          gap: "8px",
+                        }}>
+                        <AccountIcon />
+                        <Typography.Text
+                          ellipsis
+                          style={{
+                            maxWidth: "120px",
+                            flex: 1,
+                            display: "flex",
+                            alignItems: "center",
+                          }}
+                          title={account.name}>
+                          {account.name}
+                        </Typography.Text>
+                        {account.isPrimary && (
+                          <StarFilled
+                            style={{ color: "#faad14", fontSize: "14px" }}
+                          />
+                        )}
+                      </div>
+                    ),
+                    value: account.id,
+                  }))}
+                  loading={isLoading && accounts.length === 0}
+                />
+              </Tooltip>
+            </div>
+          )}
 
-            <Typography.Text strong>{user?.email}</Typography.Text>
-
-            <Button
-              type="text"
-              icon={<LogoutOutlined />}
-              onClick={handleLogout}
-              style={{ color: "#ff4d4f" }}>
-              Logout
-            </Button>
-          </Space>
+          {/* User Avatar with Dropdown */}
+          <Dropdown
+            menu={{ items: dropdownMenuItems }}
+            placement="bottomRight"
+            trigger={["click"]}
+            open={avatarDropdownOpen}
+            onOpenChange={setAvatarDropdownOpen}
+            overlayStyle={{ minWidth: "280px" }}>
+            <Avatar
+              size={40}
+              style={{
+                background: "linear-gradient(135deg, #1890ff 0%, #722ed1 100%)",
+                cursor: "pointer",
+                border: "2px solid #f0f0f0",
+              }}>
+              {user?.email?.charAt(0).toUpperCase() || "U"}
+            </Avatar>
+          </Dropdown>
         </Header>
         <Content
           style={{
