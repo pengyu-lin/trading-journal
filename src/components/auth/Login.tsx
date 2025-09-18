@@ -51,7 +51,15 @@ export default function Login({ onSwitchToRegister }: LoginProps) {
           <Text type="secondary">Sign in to your trading journal</Text>
         </div>
 
-        <Form name="login" onFinish={onFinish} layout="vertical" size="large">
+        <Form
+          name="login"
+          onFinish={onFinish}
+          layout="vertical"
+          size="large"
+          initialValues={{
+            email: "test@123.com",
+            password: "123456",
+          }}>
           <Form.Item
             name="email"
             rules={[
